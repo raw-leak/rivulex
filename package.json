@@ -1,0 +1,16 @@
+{
+    "name": "rivulex",
+    "version": "0.0.0",
+    "description": "Rivulex is a high-performance messaging library leveraging Redis Streams for reliable event-driven communication within distributed systems.",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/raw-leak/rivulex.git"
+    },
+    "author": "Mykhaylo Gusak",
+    "license": "MIT",
+    "bugs": {
+      "url": "https://github.com/raw-leak/rivulex/issues"
+    },
+    "homepage": "https://github.com/raw-leak/rivulex#readme"
+  }
+  
