@@ -1,0 +1,32 @@
+{
+    "compilerOptions": {
+        "target": "es2019", // Compile to ES2019 for modern JavaScript features
+        "module": "commonjs", // CommonJS for Node.js compatibility
+        "lib": [
+            "es2019"
+        ], // Standard library features supported
+        "outDir": "./dist", // Output directory for compiled files
+        "rootDir": "./lib", // Root directory of the source files
+        "strict": true, // Enable all strict type-checking options
+        "esModuleInterop": true, // Enables ES6-style module import interoperability
+        "moduleResolution": "node", // Resolve modules using Node.js style
+        "declaration": true, // Generates corresponding '.d.ts' file
+        "sourceMap": true, // Generates corresponding '.map' file for debugging
+        "removeComments": true, // Remove comments in output
+        "noImplicitAny": true, // Raise error on expressions and declarations with an implied 'any' type
+        "noImplicitReturns": true, // Report error when not all code paths in function return a value
+        "noUnusedLocals": true, // Report errors on unused locals
+        "noUnusedParameters": true, // Report errors on unused parameters
+        "importHelpers": true, // Import emit helpers from 'tslib'
+        "experimentalDecorators": true, // Enables experimental support for ES decorators
+        "emitDecoratorMetadata": true // Enables experimental support for emitting type metadata for decorators
+    },
+    "exclude": [
+        "node_modules", // Exclude node_modules from compilation
+        "dist",
+        "tests"
+    ],
+    "include": [
+        "lib/**/*" // Include all files in lib for compilation
+    ]
+}

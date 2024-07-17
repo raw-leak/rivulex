@@ -3,14 +3,22 @@
     "version": "0.0.0",
     "description": "Rivulex is a high-performance messaging library leveraging Redis Streams for reliable event-driven communication within distributed systems.",
     "repository": {
-      "type": "git",
-      "url": "git+https://github.com/raw-leak/rivulex.git"
+        "type": "git",
+        "url": "git+https://github.com/raw-leak/rivulex.git"
     },
     "author": "Mykhaylo Gusak",
     "license": "MIT",
     "bugs": {
-      "url": "https://github.com/raw-leak/rivulex/issues"
+        "url": "https://github.com/raw-leak/rivulex/issues"
     },
-    "homepage": "https://github.com/raw-leak/rivulex#readme"
-  }
-  
+    "homepage": "https://github.com/raw-leak/rivulex#readme",
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^7.16.1",
+        "@typescript-eslint/parser": "^7.16.1",
+        "eslint": "^8.57.0"
+    },
+    "scripts": {
+        "lint": "eslint 'lib/**/*.{ts,tsx}'",
+        "build": "tsc"
+    }
+}
