@@ -3,8 +3,8 @@ import { Handler } from "../types/index";
 export class Channel {
     private actionCallbacks: Record<string, Handler> = {};
 
-    action(actionName: string, callback: Handler) {
-        this.actionCallbacks[actionName] = callback;
+    action(actionName: string, handler: Handler) {
+        this.actionCallbacks[actionName] = handler;
         return this;
     }
 

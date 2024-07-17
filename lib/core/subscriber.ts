@@ -1,6 +1,6 @@
 import { Channel } from '../channel/channel';
 import { SubscriberConfig } from '../config/subscriber-config';
-import { Redis } from '../types';
+import { Handler, Redis } from '../types';
 
 export class Subscriber {
   private redis: Redis;
@@ -8,6 +8,16 @@ export class Subscriber {
 
   constructor(redis: Redis, config: SubscriberConfig) {
     this.redis = redis;
+  }
+
+  streamAction(streamName: string, action: string, handler: Handler) {
+    let channel = this.channels.get(streamName)
+    if (!channel) {
+      channel = new Channel();
+      this.channels.set(streamName, channel);
+    }
+
+    channel.action(action, handler)
   }
 
   stream(streamName: string): Channel {
