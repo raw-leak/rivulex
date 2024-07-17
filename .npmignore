@@ -1,0 +1,12 @@
+tests/
+examples/
+lib/
+node_modules/
+
+tsconfig.json
+
+.git/
+.vscode/
+
+.gitignore
+.eslintrc.json
