@@ -1,15 +1,17 @@
 
 import { Formatter } from "../formatter/formatter"
 import { PublisherConfig } from "../config/publisher-config";
+import { Headers, PublishErrorCallback, PublishSuccessCallback, RedisClient } from "../types";
 
-import { Headers, PublishErrorCallback, PublishSuccessCallback, Redis } from "../types";
-
-
+// TODO: doc
 export class Publisher {
-    private redis: Redis
-    private formatter: Formatter;
     private channel: string;
     private group: string;
+
+    private redis: RedisClient
+    private formatter: Formatter;
+    private logger: Console;
+
     private onMessagePublished: PublishSuccessCallback<any, any>;
     private onPublishFailed: PublishErrorCallback<any>;
 
@@ -17,26 +19,41 @@ export class Publisher {
      * Create a stream Publisher.
      * @param {Object} config - Configuration object for the publisher.
      */
-    constructor(redis: Redis, config: PublisherConfig) {
+    constructor(config: PublisherConfig, redis: RedisClient, logger: Console) {
+        const { channel, group, onMessagePublished, onPublishFailed } = config
 
+        if (!redis) throw new Error('Missing required "redis" parameter');
+        if (!channel) throw new Error('Missing required "channel" parameter');
+        if (!group) throw new Error('Missing required "group" parameter');
+
+        this.channel = channel;
+        this.group = group;
+
+        this.redis = redis
+        this.logger = logger
+
+        this.onMessagePublished = onMessagePublished || this.defaultOnMessagePublished;
+        this.onPublishFailed = onPublishFailed || this.defaultOnPublishFailed;
+
+        this.formatter = new Formatter()
     }
 
     /**
       * Default handler for successful publishing.
       */
     private defaultOnMessagePublished: <P extends Record<any, any>, H extends Record<any, any>>(data: { id: string, headers: Headers<H>, action: string, payload: P, group: string }) => void = (data) => {
-        console.log(`PUBLISHED id: ${data.id} action: ${data.action} group: ${data.group}`);
+        this.logger.log(`PUBLISHED id: ${data.id} action: ${data.action} group: ${data.group}`);
     };
 
     /**
      * Default handler for failed publishing.
      */
     private defaultOnPublishFailed: <P extends Record<any, any>, H extends Record<any, any>>(data: { headers: Headers<H>, action: string, error: Error }) => void = (data) => {
-        console.error(`PUBLISH_FAILED action: ${data.action} group: ${data.headers.group} error: ${data.error.message} stack: ${data.error.stack}`);
+        this.logger.error(`PUBLISH_FAILED action: ${data.action} group: ${data.headers.group} error: ${data.error.message} stack: ${data.error.stack}`);
     };
 
     /**
-     * Publish a message.
+     * Publish a single event.
      */
     publish = async <P extends Record<any, any>, H extends Record<any, any>>(action: string, payload: P, headers: H = {} as H): Promise<string> => {
         try {
@@ -50,7 +67,7 @@ export class Publisher {
     };
 
     /**
-    * Publish multiple messages in a batch.
+    * Publish multiple events in a batch.
     */
     publishBatch = async <P extends Record<any, any>, H extends Record<any, any>>(messages: Array<{ action: string, payload: P, headers: H }>): Promise<Array<{ ok: boolean, id?: string, error: Error | null }>> => {
         if (!messages || !messages.length) {

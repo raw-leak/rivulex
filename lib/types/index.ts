@@ -1,6 +1,13 @@
-export type Redis = any
+import { Redis } from "ioredis";
+import { Channel } from "../channel/channel";
 
-export type RawEvent = [string, string, string, number];
+export type RedisClient = Redis
+
+export type RawEvent =
+    | [string, ["action", string, "payload", string, "headers", string], string, number]
+    | [string, ["action", string, "payload", string, "headers", string, "attempt", number], string, number];
+
+export type PendingEvent = [string, string, string, number]; // [id, clientId, idle time, attempt]
 
 export interface Event<P = any, H = any> {
     id: string;
@@ -15,9 +22,11 @@ export interface Done {
     (): void;
 }
 
-export interface Handler<T = null> {
-    (event: Event<T>, done: Done): void;
+export interface Handler<T = any, H = any> {
+    (event: Event<T, H>, done: Done): void;
 }
+
+export type ChannelsHandlers = Map<string, Channel>
 
 interface HeadersBase {
     timestamp: string;

@@ -17,14 +17,15 @@ export class Formatter {
         return rawEvents.map(rawEvent => this.parseRawEvent(rawEvent));
     }
 
-    parseRawEvent(rawEvent: RawEvent): Event {
-        const [id, data] = rawEvent;
-        const [, action, , payload, , headers] = data;
+    parseRawEvent<P = Record<any, any>, H = Record<any, any>>(rawEvent: RawEvent): Event<P, H> {
+        const [id, [, action, , payload, , headers, , attempt = 0]] = rawEvent;
+
         return {
             id,
             action,
             payload: JSON.parse(payload),
             headers: JSON.parse(headers),
-        } as Event;
+            attempt,
+        } as Event<P, H>;
     }
 }

@@ -10,3 +10,7 @@ export { Channel } from './channel/channel';
 export { PublisherConfig } from './config/publisher-config';
 export { SubscriberConfig } from './config/subscriber-config';
 
+// Types
+export { Event, Headers, Done } from "./types"
+
+
