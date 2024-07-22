@@ -1,7 +1,7 @@
 import { Rivulex } from "../lib";
 
 (async () => {
-    const subscriber = Rivulex.subscriber({})
+    const subscriber = Rivulex.subscriber({ count: "" })
 
     const purchases = subscriber.stream("purchases")
     purchases.action("created", (event, done) => {
