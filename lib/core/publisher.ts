@@ -3,22 +3,56 @@ import { Formatter } from "../formatter/formatter"
 import { PublisherConfig } from "../config/publisher-config";
 import { Headers, PublishErrorCallback, PublishSuccessCallback, RedisClient } from "../types";
 
-// TODO: doc
+/**
+ * Publisher is a class responsible for publishing events to a Redis stream.
+ * It handles single and batch event publishing and manages success and failure callbacks.
+ */
 export class Publisher {
-    private channel: string;
-    private group: string;
+    /**
+   * The Redis stream channel to publish events to.
+   */
+    readonly channel: string;
+
+    /**
+   * The consumer group to associate with the events.
+   */
+    readonly group: string;
+
 
     private redis: RedisClient
     private formatter: Formatter;
     private logger: Console;
 
+
+    /**
+    * Optional callback to be invoked when a message is successfully published.
+    * Allows developers to implement custom logging or other processing for successful publishes.
+    * @param {Object} data - The data associated with the successful publish.
+    * @param {string} data.id - The ID of the published event.
+    * @param {Headers<H>} data.headers - The headers of the event.
+    * @param {string} data.action - The action associated with the event.
+    * @param {P} data.payload - The payload of the event.
+    */
     private onMessagePublished: PublishSuccessCallback<any, any>;
+
+
+    /**
+    * Optional callback to be invoked when publishing fails.
+    * Allows developers to implement custom error handling or logging for failed publishes.
+    * @param {Object} data - The data associated with the failed publish.
+    * @param {Headers<H>} data.headers - The headers of the event.
+    * @param {string} data.action - The action associated with the event.
+    * @param {Error} data.error - The error encountered during publishing.
+    */
     private onPublishFailed: PublishErrorCallback<any>;
 
     /**
-     * Create a stream Publisher.
-     * @param {Object} config - Configuration object for the publisher.
-     */
+    * Creates an instance of Publisher.
+    * @param {PublisherConfig} config - Configuration object for the publisher.
+    * @param {RedisClient} redis - The Redis client used to interact with the Redis server.
+    * @param {Console} logger - The logger used for logging messages.
+    * @throws {Error} Throws an error if required parameters are missing.
+    */
     constructor(config: PublisherConfig, redis: RedisClient, logger: Console) {
         const { channel, group, onMessagePublished, onPublishFailed } = config
 
