@@ -297,4 +297,20 @@ export class Subscriber {
       this.enabled = true
     }
   }
+
+  /**
+  * Stops listening for events on all configured channels.
+  * 
+  * ```typescript
+  * await subscriber.stop();
+  * // The subscriber is now not listening for events
+  * ```
+  */
+  async stop() {
+    if (this.enabled) {
+      await this.liveConsumer.stop()
+      await this.failedConsumer.stop()
+      this.enabled = false
+    }
+  }
 }
