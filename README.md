@@ -1,19 +1,36 @@
 
 <div align="center">
-  <h1>Rivulex</h1>
+  <h1>Rivulex [in-progress]</h1>
   
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![Last Tag](https://img.shields.io/github/v/tag/raw-leak/rovulex?label=Last%20Tag)
-![Version](https://img.shields.io/github/v/release/raw-leak/rovulex)
-![Contributors](https://img.shields.io/github/contributors/raw-leak/rovulex)
+![Last Tag](https://img.shields.io/github/v/tag/raw-leak/rivulex?label=Last%20Tag)
+![Version](https://img.shields.io/github/v/release/raw-leak/rivulex)
+![Contributors](https://img.shields.io/github/contributors/raw-leak/rivulex)
 
 </div>
 
-[in-progress] Rivulex is a Node.js library for managing Redis streams, providing functionality for publishing and subscribing to events with robust handling and logging.
+Rivulex is a high-performance messaging system built on Redis Streams and written in pure JavaScript. Designed to ensure at-least-once delivery guarantees, Rivulex is ideal for distributed systems and applications that require robust, reliable messaging and event handling.
+
+
+### Key Features:
+- **At-Least-Once Delivery**: Rivulex ensures that every message is delivered at least once, making it suitable for scenarios where message loss is unacceptable.
+- **FIFO Messaging**: Leveraging Redis Streams, Rivulex provides a FIFO (First-In-First-Out) order for message processing, ensuring predictable and reliable message handling.
+- **Distributed and Scalable**: Built to handle horizontal scaling, Rivulex supports the creation of consumer groups, allowing you to efficiently scale out your messaging system across multiple instances.
+- **Flexible Configuration**: Easily configure timeouts, blocking behavior, retries, and more to tailor the system to your specific needs.
+- **Error Handling and Logging**: Integrates customizable error handling and logging, providing insights into message processing and failures.
+
+### Use Cases:
+- **Event-Driven Architectures**: Perfect for building systems that rely on events and need reliable message delivery.
+- **Microservices**: Facilitates communication between microservices in distributed systems.
+- **Real-Time Data Processing**: Suitable for applications that require real-time processing and streaming of data.
+
+With Rivulex, you can build scalable, reliable, and efficient messaging systems that are well-suited for modern distributed environments.
+
 
 ## Table of Contents
 
 ## Installation
+TODO
 
 To install Rivulex, use npm:
 
@@ -21,10 +38,33 @@ To install Rivulex, use npm:
 npm install rivulex
 ```
 
-## Getting Started
-
 ## Publisher
 
+### Configuration Parameters
+
+When creating a `Publisher` instance, you need to provide a configuration object with the following parameters:
+
+| **Parameter**          | **Description**                                                                 | **Required** | **Default Value**                          |
+|------------------------|---------------------------------------------------------------------------------|--------------|--------------------------------------------|
+| `channel`              | The Redis stream channel to publish events to.                                   | Yes          | -                                          |
+| `group`                | The consumer group to associate with the events.                                 | Yes          | -                                          |
+| `onMessagePublished`   | Callback function called when a message is successfully published.               | No           | Uses default callback if not provided.     |
+| `onPublishFailed`      | Callback function called when publishing a message fails.                        | No           | Uses default callback if not provided.     |
+
+### Example Configuration Parameters
+
+```ts
+const publisherConfig: PublisherConfig = {
+    channel: 'my-channel',
+    group: 'my-group',
+    onMessagePublished: (data) => {
+        console.log(`Message published successfully: ${data.id}`);
+    },
+    onPublishFailed: (data) => {
+        console.error(`Failed to publish message: ${data.error}`);
+    }
+};
+```
 ### Overview
 
 The `Publisher` class is responsible for sending events to Redis streams. It supports configuration for success and error callbacks, making it flexible for various use cases.
@@ -35,8 +75,8 @@ The `Publisher` class is responsible for sending events to Redis streams. It sup
 import { Rivulex } from 'rivulex';
 
 const config = {
-    channel: 'my-channel',
-    group: 'my-group',
+    channel: 'users',
+    group: 'api-users',
     onMessagePublished: (data) => {
         console.log('Message published:', data);
     },
@@ -51,140 +91,37 @@ const publisher = Rivulex.publisher(config);
 publisher.publish('user_created', { id: "123", email: "user@email.com" }, { requestId: '123' });
 ```
 
-### Advanced Examples
-
-#### Publishing with Error Handling
-
-```typescript
-const config = {
-    channel: 'users',
-    group: 'products',
-    onMessagePublished: (event: Event<P,H>) => { // TO DEFINE
-        console.log('Message published:', data);
-    },
-    onPublishFailed: (data) => { // TO DEFINE
-        console.error('Publish failed:', data);
-    }
-};
-
-const publisher = Rivulex.publisher(config);
-
-// Publish a message with a custom payload and headers
-const payload = { userId: 123, action: 'login' };
-const headers = { authToken: 'abcdef' };
-publisher.publish('user-action', payload, headers);
-```
-
-## Examples
-
-See the [Getting Started](#getting-started) section for basic usage examples. Additional examples can be found in the `examples/` directory.
-
-
-
-///
-
-# Rivulex
-
-Rivulex is a Node.js library for managing Redis streams, providing robust functionality for publishing and subscribing to events with comprehensive handling and logging.
-
-## Table of Contents
-
-- [Installation](#installation)
-- [Publisher](#publisher)
-  - [Overview](#publisher-overview)
-  - [Configuration](#publisher-configuration)
-  - [Usage](#publisher-usage)
-  - [Advanced Examples](#publisher-advanced-examples)
-- [Subscriber](#subscriber)
-  - [Overview](#subscriber-overview)
-  - [Configuration](#subscriber-configuration)
-  - [Usage](#subscriber-usage)
-  - [Advanced Examples](#subscriber-advanced-examples)
-- [API Reference](#api-reference)
-  - [Rivulex](#rivulex)
-  - [Channel](#channel)
-  - [LiveConsumer](#liveconsumer)
-  - [FailedConsumer](#failedconsumer)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Installation
-
-To install Rivulex, use npm:
-
-```bash
-npm install rivulex
-```
-
-## Publisher
-
-The `Publisher` class is responsible for sending events to Redis streams. It supports configuration for success and error callbacks, making it flexible for various use cases.
-
-### Configuration
-
-```typescript
-interface PublisherConfig {
-    channel: string; // The Redis stream channel to publish events to.
-    group: string; // The consumer group to associate with the events.
-    onMessagePublished?: (data: PublishSuccessData) => void; // Optional callback for successful message publishing.
-    onPublishFailed?: (data: PublishErrorData) => void; // Optional callback for failed message publishing.
-}
-```
-
-### Usage
-
-```typescript
-import { Rivulex } from 'rivulex';
-
-const config = {
-    channel: 'my-channel',
-    group: 'my-group',
-    onMessagePublished: (data) => {
-        console.log('Message published:', data);
-    },
-    onPublishFailed: (data) => {
-        console.error('Publish failed:', data);
-    }
-};
-
-const publisher = Rivulex.publisher(config);
-
-// Example: Publishing a message
-publisher.publish('my-action', { key: 'value' }, { headerKey: 'headerValue' });
-```
-
 ## Subscriber
 
 The `Subscriber` class listens to Redis streams and processes events. It supports configurations for timeouts, blocking behavior, and retry strategies.
 
-### Usage
+### Configuration Parameters
 
-```typescript
-import { Rivulex } from 'rivulex';
+When creating a Subscriber instance, you need to provide a configuration object with the following parameters:
 
-const config = {
-    group: 'users',
-    timeout: 5000,
-    count: 10,
-    block: 1000,
+| **Parameter** | **Description** | **Required** | **Default Value** |
+|---------------|-----------------|--------------|-------------------|
+| `clientId`    | The unique identifier for the subscriber. If not provided, a default value is generated. | No           | `rivulex:{group}:sub:{Date.now()}` |
+| `group`       | The group name for the subscriber. Subscribers with the same group name share the workload. | Yes          | -                 |
+| `timeout`     | The maximum time in milliseconds to wait for an event before retrying. | No           | `600_000` ms (10 minutes) |
+| `count`       | The maximum number of messages fetched in each request from Redis Stream. | No           | `100`                 |
+| `block`       | The time in milliseconds that the subscriber blocks while waiting for new events. | No           | `30_000` ms (30 seconds) |
+| `retries`     | The number of times the subscriber will attempt to process an event before sending it to the dead letter queue. | No           | `3`                 |
+
+### Example Configuration Parameters
+
+```ts
+const subscriberConfig: SubscriberConfig = {
+    clientId: 'my-subscriber-id',
+    group: 'my-group',
+    timeout: 5000, // 5 seconds
+    count: 100,
+    block: 15000, // 15 seconds
     retries: 5
 };
-
-const subscriber = Rivulex.subscriber(config);
-
-// Define a handler for a specific action
-subscriber.streamAction('my-channel', 'my-action', (event: Event<P, H>, done: Done) => {
-    console.log('Received event:', event);
-    await done(); // Signal that processing is complete
-});
-
-// Start listening for events
-await subscriber.listen();
 ```
 
-### Advanced Examples
-
-#### Handling Multiple Channels and Actions
+### Usage
 
 ```typescript
 const config = {
@@ -197,29 +134,71 @@ const config = {
 
 const subscriber = Rivulex.subscriber(config);
 
-// Register handlers for multiple actions
-subscriber.stream('my-channel')
-    .action('login', (event, done) => {
-        console.log('Login event:', event);
-        done();
+// register a channel subscribed to a specific Redis Stream
+const userChannel = subscriber.stream('users')
+
+// register handlers for multiple actions
+userChannel
+    .action('user_created', (event:Event<UserCreatedPayload, CustomHeaders>, done: Done) => {
+        // process
+        await done();
     })
-    .action('logout', (event, done) => {
-        console.log('Logout event:', event);
-        done();
+    .action('user_deleted', (event:Event<UserDeletedPayload, CustomHeaders>, done: Done) => {
+        // process
+        await done();
     });
 
-// Register another channel
+// you can also register directly handlers directly for stream and action
+subscriber.streamAction('users','user_suspended', (event:Event<UserSuspendedPayload, CustomHeaders>, done: Done) => {
+    // process
+    await done();
+})
+
+// register another channel subscribed to a specific Redis Stream
 subscriber.stream('another-channel')
-    .action('updateProfile', (event, done) => {
-        console.log('Profile update event:', event);
-        done();
+    .action('another_action', (event:Event<AnotherPayload, CustomHeaders>, done: Done) => {
+        // process
+        await done();
     });
 
-// Start listening for events
-subscriber.listen().then(() => {
-    console.log('Subscriber is listening to multiple channels...');
-});
+// start listening for events
+await subscriber.listen()
+
+// stop listening for events
+await subscriber.stop()
 ```
+## Event Interface
+
+The Event interface in Rivulex is used to represent messages or events that are passed through the system. It provides a structure for the event's data and metadata.
+
+### Interface Definition
+```ts
+export interface Event<P = any, H = any> {
+    id: string;
+    action: string;
+    channel: string;
+    attempt: number;
+    headers: Headers<H>;
+    payload: P;
+}
+```
+### Properties
+
+- `id: string`: A unique identifier for the event. Think of it as an ID badge for tracking the event.
+
+- `action: string`: Describes what should be done with the event. This could be something like "process-o`rder" or` "send-e`mail".
+
+- `channel: string`: The channel or topic where the event was published. This helps in organizing and routing events.
+
+- `attempt: number`: The number of times the event has been tried. Useful for retrying or tracking the event’s processing.
+
+- `headers: Headers<H>`: Extra information about the event. For example, it could include metadata like the event's source or priority. You can customize what these headers contain.
+
+- `payload: P`: The main data of the event. This is what the event is carrying. For example, if the event is about a new order, the payload might include order details.
+
+## Examples
+
+See the [Getting Started](#getting-started) section for basic usage examples. Additional examples can be found in the `examples/` directory.
 
 ## API Reference
 
