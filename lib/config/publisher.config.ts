@@ -34,22 +34,26 @@ export type PublishErrorCallback<H extends Record<any, any>> = (
  */
 export interface PublisherConfig {
     /**
-     * The Redis stream channel to publish events to.
-     */
+    * The Redis stream channel to publish events to.
+    * @REQUIRED
+    */
     channel: string;
 
     /**
-     * The consumer group to associate with the events.
-     */
+    * The consumer group to associate with the events.
+    * @REQUIRED
+    */
     group: string;
 
     /**
-     * Callback to be invoked when an event is successfully published.
-     */
+    * Callback to be invoked when an event is successfully published.
+    * @OPTIONAL
+    */
     onMessagePublished?: PublishSuccessCallback<any, any>;
 
     /**
-     * Callback to be invoked when publishing an event fails.
-     */
+    * Callback to be invoked when publishing an event fails.
+    * @OPTIONAL
+    */
     onPublishFailed?: PublishErrorCallback<any>;
 }
