@@ -7,10 +7,7 @@ export { Rivulex } from './core/rivulex';
 export { Channel } from './channel/channel';
 
 // Configurations
-export { PublisherConfig } from './config/publisher.config';
-export { SubscriberConfig } from './config/subscriber.config';
+export { RivulexPublisherConfig, RivulexSubscriberConfig } from './config/rivulex.config';
 
 // Types
 export { Event, Headers, Done } from "./types"
-
-
