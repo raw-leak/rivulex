@@ -19,6 +19,22 @@
     "publishConfig": {
         "access": "public"
     },
+    "keywords": [
+        "redis",
+        "streams",
+        "messaging",
+        "event-driven",
+        "distributed",
+        "scalable",
+        "fifo",
+        "message-queue",
+        "at-least-once",
+        "event-sourcing",
+        "microservices",
+        "real-time",
+        "nodejs",
+        "javascript"
+      ],
     "bugs": {
         "url": "https://github.com/raw-leak/rivulex/issues"
     },
