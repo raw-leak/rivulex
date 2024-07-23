@@ -3,6 +3,11 @@ import { Retryer } from "../utils/utils";
 import { Formatter } from "../formatter/formatter";
 import { Event, Done, RedisClient, RawEvent, Handler } from "../types";
 
+/**
+* The `Processor` class is responsible for handling events from Redis streams.
+* It includes methods to confirm, skip, and reject events, and to process
+* events according to provided handlers and retry logic.
+*/
 export class Processor {
   private retries: number;
   private group: string;
@@ -12,6 +17,16 @@ export class Processor {
   private formatter: Formatter;
   private retry: (callback: Function) => Promise<any>;
 
+
+  /**
+  * Creates a new `Processor` instance.
+  * 
+  * @param {Object} config - The configuration object.
+  * @param {number} config.retries - The number of retries for processing an event. Default is 3.
+  * @param {string} config.group - The consumer group name.
+  * @param {RedisClient} redis - The Redis client for interacting with Redis.
+  * @param {Console} logger - The logger for logging information and errors.
+  */
   constructor({ retries, group }: { retries: number, group: string }, redis: RedisClient, logger: Console) {
     this.redis = redis;
     this.logger = logger;
@@ -21,6 +36,14 @@ export class Processor {
     this.retry = Retryer(3, 3_000)
   }
 
+  /**
+  * Creates a `Done` function that confirms an event has been processed successfully.
+  * 
+  * @param {string} streamName - The name of the Redis stream.
+  * @param {Event} event - The event to be confirmed.
+  * 
+  * @returns {Done} - A function that confirms the event.
+  */
   private confirmEvent(streamName: string, event: Event): Done {
     return async () => {
       try {
@@ -33,6 +56,12 @@ export class Processor {
     }
   }
 
+  /**
+  * Skips processing of an event and acknowledges it.
+  * 
+  * @param {string} streamName - The name of the Redis stream.
+  * @param {Event} event - The event to be skipped.
+  */
   private async skipEvent(streamName: string, event: Event) {
     try {
       await this.retry(() => this.redis.xack(streamName, this.group, event.id))
@@ -43,6 +72,13 @@ export class Processor {
     }
   }
 
+
+  /**
+  * Rejects an event by moving it to the dead-letter stream and acknowledging it.
+  * 
+  * @param {string} streamName - The name of the Redis stream.
+  * @param {Event} event - The event to be rejected.
+  */
   private async rejectEvent(streamName: string, event: Event) {
     try {
       const rejectedHeaders = {
@@ -67,7 +103,17 @@ export class Processor {
 
   }
 
-  async process<T>(streamName: string, events: Array<Event>, streamHandlers: Record<string, Handler>) {
+
+  /**
+   * Processes a batch of events from a Redis stream.
+  * 
+  * @param {string} streamName - The name of the Redis stream.
+  * @param {Array<Event>} events - The events to be processed.
+  * @param {Record<string, Handler>} actionHandlers - The handlers for processing events based on action.
+  * 
+  * @template T - The type of the payload in the event.
+  */
+  async process<T>(streamName: string, events: Array<Event>, actionHandlers: Record<string, Handler>) {
     await Promise.all(
       events.map(async (event) => {
 
@@ -77,7 +123,7 @@ export class Processor {
           return
         }
 
-        const actionHandler = streamHandlers[event.action]
+        const actionHandler = actionHandlers[event.action]
         if (!actionHandler) {
           await this.skipEvent(streamName, event)
           return

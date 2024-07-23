@@ -1,7 +1,8 @@
-import { RedisClient } from "../types";
+import { Redis } from "../redis/redis";
+import { RedisClient, RedisConfig } from "../types";
 
-import { PublisherConfig } from "../config/publisher-config";
-import { SubscriberConfig } from "../config/subscriber-config";
+import { PublisherConfig } from "../config/publisher.config";
+import { SubscriberConfig } from "../config/subscriber.config";
 
 import { Publisher } from "../core/publisher";
 import { Subscriber } from "../core/subscriber";
@@ -22,9 +23,9 @@ export class Rivulex {
      * @returns {RedisClient} - The Redis client instance.
      * @throws {Error} - Throws an error if Redis client initialization fails.
      */
-    private static initiateRedis(): RedisClient {
+    private static initiateRedis(config: RedisConfig): RedisClient {
         if (!Rivulex.redisClient) {
-            Rivulex.redisClient = Redis.init()
+            Rivulex.redisClient = Redis.connect(config)
         }
         return Rivulex.redisClient;
     }
@@ -40,7 +41,7 @@ export class Rivulex {
     * @throws {Error} - Throws an error if the configuration is invalid or missing required fields.
     */
     static publisher(config: PublisherConfig, logger: Console = console): Publisher {
-        const redis = Rivulex.initiateRedis();
+        const redis = Rivulex.initiateRedis({}); // TODO
         return new Publisher(config, redis, logger);
     }
 
@@ -54,7 +55,7 @@ export class Rivulex {
     * @throws {Error} - Throws an error if the configuration is invalid or missing required fields.
     */
     static subscriber(config: SubscriberConfig, logger: Console = console): Subscriber {
-        const redis = Rivulex.initiateRedis();
+        const redis = Rivulex.initiateRedis({}); // TODO
         return new Subscriber(config, redis, logger);
     }
 }

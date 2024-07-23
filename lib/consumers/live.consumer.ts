@@ -4,15 +4,7 @@ import { ChannelsHandlers, RawEvent, RedisClient } from "../types";
 
 /**
 * Configuration object for the `LiveConsumer` class.
-* 
 * @interface
-* 
-* @member {string} clientId - (REQUIRED) The unique identifier for the consumer instance.
-* @member {string[]} channels - (REQUIRED) An array of channel names (stream names) to connect to.
-* @member {string} group - (REQUIRED) The name of the consumer group that the consumer will join.
-* @member {number} retries - (REQUIRED) The maximum number of retries for processing an event before considering it failed.
-* @member {number} count - (REQUIRED) The number of events to fetch from Redis in each request.
-* @member {number} block - (REQUIRED) The time, in milliseconds, that the consumer will block and wait for new events before returning control.
 */
 export interface LiveConsumerConfig {
     clientId: string;
@@ -100,9 +92,9 @@ export class LiveConsumer {
     };
 
     /**
-     * Subscribe to streaming messages
-     * @param {Function} streams (REQUIRED) Callback for incoming messages.
-     */
+    * Start consuming events for defined streams with provided handlers
+    * @param {Function} channelsHandlers (REQUIRED) Handlers for incoming events.
+    */
     consume = <T>(streams: ChannelsHandlers) => {
         if (!this.enabled) {
             this.enabled = true;
@@ -120,8 +112,8 @@ export class LiveConsumer {
     };
 
     /**
-     * Terminate live consumer
-     */
+    * Stop consuming events
+    */
     async stop() {
         this.enabled = false;
     }

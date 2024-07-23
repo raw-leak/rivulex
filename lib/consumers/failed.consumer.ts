@@ -5,37 +5,15 @@ import { PendingEvent, RawEvent, RedisClient, Event, ChannelsHandlers } from "..
 import { Backoff } from "../utils/backoff";
 
 /**
-* @interface export class FailedConsumerConfig
+* Configuration object for the `FailedConsumer` class.
+* @interface
 */
 export interface FailedConsumerConfig {
     clientId: string;
-
-    /**
-    * The Redis stream channels to fetch events from.
-    */
     channels: Array<string>;
-
-    /**
-    * The consumer group to associate with the events.
-    */
     group: string;
-
-    /**
-     * The maximum number of events to fetch with each request to Redis.
-     */
     count: number;
-
-    /**
-    * The maximum time (in milliseconds) that the subscriber is allowed to process an event.
-    * If the event is not processed within this time, it will be retried based on the `retries` setting.
-    */
     timeout: number;
-
-
-    /**
-    * The number of times the subscriber will attempt to process an event before moving it to the dead letter stream.
-    * This is used to handle events that cannot be processed successfully after multiple retries.
-    */
     retries: number;
 }
 
@@ -126,9 +104,9 @@ export class FailedConsumer {
     }
 
     /**
-   * Subscribe to streaming messages
-   * @param {Function} channelsHandlers (REQUIRED) Callback for incoming messages.
-   */
+    * Start consuming events for defined streams with provided handlers
+    * @param {Function} channelsHandlers (REQUIRED) Handlers for incoming events.
+    */
     consume = <T>(channelsHandlers: ChannelsHandlers) => {
         if (!this.enabled) {
             this.enabled = true;
@@ -150,7 +128,7 @@ export class FailedConsumer {
 
 
     /**
-     * Terminate failed consumer
+     * Stop consuming events
      */
     async stop() {
         this.enabled = false;

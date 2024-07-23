@@ -1,5 +1,5 @@
 import { Channel } from '../channel/channel';
-import { SubscriberConfig } from '../config/subscriber-config';
+import { SubscriberConfig } from '../config/subscriber.config';
 import { FailedConsumer } from '../consumers/failed.consumer';
 import { LiveConsumer } from '../consumers/live.consumer';
 import { ChannelsHandlers, Handler, RedisClient } from '../types';

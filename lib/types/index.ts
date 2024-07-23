@@ -1,4 +1,4 @@
-import { Redis } from "ioredis";
+import { Redis, RedisOptions } from "ioredis";
 import { Channel } from "../channel/channel";
 
 /**
@@ -7,6 +7,7 @@ import { Channel } from "../channel/channel";
  */
 export type RedisClient = Redis
 
+export type RedisConfig = RedisOptions
 
 /**
  * Represents the raw event structure from Redis.
