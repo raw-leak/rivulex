@@ -2,7 +2,7 @@ import { Channel } from '../channel/channel';
 import { SubscriberConfig } from '../config/subscriber.config';
 import { FailedConsumer } from '../consumers/failed.consumer';
 import { LiveConsumer } from '../consumers/live.consumer';
-import { ChannelsHandlers, Handler, RedisClient } from '../types';
+import { ChannelsHandlers, Handler, Logger, RedisClient } from '../types';
 
 /**
  * The `Subscriber` class is responsible for subscribing to Redis streams, 
@@ -11,7 +11,7 @@ import { ChannelsHandlers, Handler, RedisClient } from '../types';
  * based on their state.
  */
 export class Subscriber {
-  private logger: Console;
+  private logger: Logger;
   private redis: RedisClient;
 
   /**
@@ -32,13 +32,11 @@ export class Subscriber {
   */
   readonly channelsHandlers: ChannelsHandlers;
 
-
   /**
   * Indicates whether the subscriber is currently enabled.
   * @type {boolean}
   */
   private enabled = false;
-
 
   /**
   * The client ID for the subscriber. Used for identifying the consumer within a group.
@@ -134,10 +132,10 @@ export class Subscriber {
   * 
   * @param {SubscriberConfig} config - Configuration object for the `Subscriber`.
   * @param {RedisClient} redis - The Redis client used to interact with Redis streams.
-  * @param {Console} logger - The logger instance used for logging messages and errors.
+  * @param {Logger} logger - The logger instance used for logging messages and errors.
   * @throws {Error} - Throws an error if the Redis client or group is missing from the configuration.
   */
-  constructor(config: SubscriberConfig, redis: RedisClient, logger: Console) {
+  constructor(config: SubscriberConfig, redis: RedisClient, logger: Logger) {
     const { clientId, group, timeout, count, retries, block } = config;
 
     if (!redis) throw new Error('Missing required "redis" parameter');

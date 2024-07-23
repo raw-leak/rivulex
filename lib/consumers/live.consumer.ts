@@ -1,6 +1,6 @@
 import { Formatter } from "../formatter/formatter";
 import { Processor } from "../processor/processor";
-import { ChannelsHandlers, RawEvent, RedisClient } from "../types";
+import { ChannelsHandlers, Logger, RawEvent, RedisClient } from "../types";
 
 /**
 * Configuration object for the `LiveConsumer` class.
@@ -26,7 +26,7 @@ export interface LiveConsumerConfig {
 * 
 * @param {LiveConsumerConfig} config - Configuration object containing settings for the consumer.
 * @param {RedisClient} redis - The Redis client instance used for interacting with Redis streams.
-* @param {Console} logger - The logging instance used for outputting information, warnings, and errors.
+* @param {Logger} logger - The logging instance used for outputting information, warnings, and errors.
 * @throws {Error} Throws an error if the Redis client is missing or invalid, if the channels array is empty or not provided, or if the group parameter is missing.
 * 
 */
@@ -39,10 +39,10 @@ export class LiveConsumer {
     private count: number;
     private block: number;
     private redis: RedisClient;
-    private logger: Console;
+    private logger: Logger;
     private formatter: Formatter;
 
-    constructor(config: LiveConsumerConfig, redis: RedisClient, logger: Console) {
+    constructor(config: LiveConsumerConfig, redis: RedisClient, logger: Logger) {
         const { clientId, channels, group, count, block, retries } = config;
 
         if (!redis) throw new Error('Missing required "redis" parameter');

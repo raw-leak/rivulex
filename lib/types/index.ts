@@ -123,3 +123,11 @@ interface HeadersBase {
  * @template T - Additional custom header properties.
  */
 export type Headers<T = Record<any, any>> = HeadersBase & T;
+
+
+export interface Logger {
+    log(message: string, ...optionalParams: any[]): void;
+    error(message: string, ...optionalParams: any[]): void;
+    warn(message: string, ...optionalParams: any[]): void;
+    debug(message: string, ...optionalParams: any[]): void;
+}

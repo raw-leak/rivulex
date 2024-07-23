@@ -1,8 +1,7 @@
-import { Channel } from "../channel/channel";
+import { Backoff } from "../utils/backoff";
 import { Formatter } from "../formatter/formatter";
 import { Processor } from "../processor/processor";
-import { PendingEvent, RawEvent, RedisClient, Event, ChannelsHandlers } from "../types";
-import { Backoff } from "../utils/backoff";
+import { PendingEvent, RawEvent, RedisClient, Event, ChannelsHandlers, Logger } from "../types";
 
 /**
 * Configuration object for the `FailedConsumer` class.
@@ -17,10 +16,24 @@ export interface FailedConsumerConfig {
     retries: number;
 }
 
+/**
+* A class for consuming failed events from Redis streams.
+* 
+* The `FailedConsumer` class listens to the specified Redis streams and processes events 
+* according to the configuration provided.
+* 
+* @class
+* 
+* @param {FailedConsumerConfig} config - Configuration object containing settings for the consumer.
+* @param {RedisClient} redis - The Redis client instance used for interacting with Redis streams.
+* @param {Logger} logger - The logging instance used for outputting information, warnings, and errors.
+* @throws {Error} Throws an error if the Redis client is missing or invalid, if the channels array is empty or not provided, or if the group parameter is missing.
+* 
+*/
 export class FailedConsumer {
     private backoff: Backoff;
     private redis: RedisClient;
-    private logger: Console;
+    private logger: Logger;
     private enabled = false;
     private clientId: string;
     private channels: Array<string>;
@@ -31,7 +44,7 @@ export class FailedConsumer {
     private processor: Processor;
     private formatter: Formatter;
 
-    constructor(config: FailedConsumerConfig, redis: RedisClient, logger: Console = console) {
+    constructor(config: FailedConsumerConfig, redis: RedisClient, logger: Logger) {
         const { clientId, channels, group, count, timeout, retries } = config;
 
         if (!redis) throw new Error('Missing required "redis" parameter');

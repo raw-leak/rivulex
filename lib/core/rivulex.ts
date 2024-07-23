@@ -1,3 +1,4 @@
+import { Logger } from "../types";
 import { Redis } from "../redis/redis";
 import { Publisher } from "../core/publisher";
 import { Subscriber } from "../core/subscriber";
@@ -19,7 +20,7 @@ export class Rivulex {
     * @returns {Publisher} - A new instance of the `Publisher` class.
     * @throws {Error} - Throws an error if the configuration is invalid or missing required fields.
     */
-    static publisher(config: RivulexPublisherConfig, logger: Console = console): Publisher {
+    static publisher(config: RivulexPublisherConfig, logger: Logger = console): Publisher {
         const redis = Redis.connect(config.redis);
         return new Publisher(config, redis, logger);
     }
@@ -33,7 +34,7 @@ export class Rivulex {
     * @returns {Subscriber} - A new instance of the `Subscriber` class.
     * @throws {Error} - Throws an error if the configuration is invalid or missing required fields.
     */
-    static subscriber(config: RivulexSubscriberConfig, logger: Console = console): Subscriber {
+    static subscriber(config: RivulexSubscriberConfig, logger: Logger = console): Subscriber {
         const redis = Redis.connect(config.redis);
         return new Subscriber(config, redis, logger);
     }

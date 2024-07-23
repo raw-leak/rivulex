@@ -1,7 +1,6 @@
-
+import { Headers, Logger, RedisClient } from "../types";
 import { Formatter } from "../formatter/formatter"
 import { PublisherConfig, PublishErrorCallback, PublishSuccessCallback } from "../config/publisher.config";
-import { Headers, RedisClient } from "../types";
 
 /**
  * Publisher is a class responsible for publishing events to a Redis stream.
@@ -20,7 +19,7 @@ export class Publisher {
 
     private redis: RedisClient
     private formatter: Formatter;
-    private logger: Console;
+    private logger: Logger;
 
     /**
     * Optional callback to be invoked when a message is successfully published.
@@ -38,10 +37,10 @@ export class Publisher {
     * Creates an instance of Publisher.
     * @param {PublisherConfig} config - Configuration object for the publisher.
     * @param {RedisClient} redis - The Redis client used to interact with the Redis server.
-    * @param {Console} logger - The logger used for logging messages.
+    * @param {Logger} logger - The logger used for logging messages.
     * @throws {Error} Throws an error if required parameters are missing.
     */
-    constructor(config: PublisherConfig, redis: RedisClient, logger: Console) {
+    constructor(config: PublisherConfig, redis: RedisClient, logger: Logger) {
         const { channel, group, onMessagePublished, onPublishFailed } = config
 
         if (!redis) throw new Error('Missing required "redis" parameter');

@@ -1,7 +1,7 @@
 
 import { Retryer } from "../utils/utils";
 import { Formatter } from "../formatter/formatter";
-import { Event, Done, RedisClient, RawEvent, Handler } from "../types";
+import { Event, Done, RedisClient, Handler, Logger } from "../types";
 
 /**
 * The `Processor` class is responsible for handling events from Redis streams.
@@ -13,7 +13,7 @@ export class Processor {
   private group: string;
   readonly deadLetter = 'dead_letter';
   private redis: RedisClient;
-  private logger: Console;
+  private logger: Logger;
   private formatter: Formatter;
   private retry: (callback: Function) => Promise<any>;
 
@@ -27,7 +27,7 @@ export class Processor {
   * @param {RedisClient} redis - The Redis client for interacting with Redis.
   * @param {Console} logger - The logger for logging information and errors.
   */
-  constructor({ retries, group }: { retries: number, group: string }, redis: RedisClient, logger: Console) {
+  constructor({ retries, group }: { retries: number, group: string }, redis: RedisClient, logger: Logger) {
     this.redis = redis;
     this.logger = logger;
     this.group = group;
@@ -65,7 +65,7 @@ export class Processor {
   private async skipEvent(streamName: string, event: Event) {
     try {
       await this.retry(() => this.redis.xack(streamName, this.group, event.id))
-      this.logger.info(`SKIPPED stream: ${streamName} action: ${event.action} id: ${event.id} attempt: ${event.attempt}`)
+      this.logger.debug(`SKIPPED stream: ${streamName} action: ${event.action} id: ${event.id} attempt: ${event.attempt}`)
     } catch (error) {
       this.logger.log(`SKIPPED_FAILED stream: ${streamName} action: ${event.action} id: ${event.id} attempt: ${event.attempt}`)
       this.logger.error(`skipping failed with error: ${error}`)
