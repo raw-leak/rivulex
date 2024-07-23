@@ -191,7 +191,7 @@ export interface Event<P = any, H = any> {
 
 - `id: string`: A unique identifier for the event. Think of it as an ID badge for tracking the event.
 
-- `action: string`: Describes what should be done with the event. This could be something like "process-o`rder" or` "send-e`mail".
+- `action: string`: Describes what should be done with the event. This could be something like "order_created" or` "email_sent".
 
 - `channel: string`: The channel or topic where the event was published. This helps in organizing and routing events.
 
