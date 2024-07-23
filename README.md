@@ -26,12 +26,18 @@ Rivulex is a high-performance messaging system built on Redis Streams and writte
 
 With Rivulex, you can build scalable, reliable, and efficient messaging systems that are well-suited for modern distributed environments.
 
-
 ## Table of Contents
 
-## Installation
-TODO
+-  [Installation](#installation)
+-  [Publisher](#publisher)
+-  [Subscriber](#subscriber)
+-  [Event Interface](#event-interface)
+-  [Examples](#examples)
+-  [API Reference](#api-reference)
+-  [Contributing](#contributing)
+-  [License](#license)
 
+## Installation
 To install Rivulex, use npm:
 
 ```bash
@@ -39,6 +45,8 @@ npm install rivulex
 ```
 
 ## Publisher
+
+The `Publisher` class is responsible for sending events to Redis streams. It supports configuration for success and error callbacks, making it flexible for various use cases.
 
 ### Configuration Parameters
 
@@ -65,9 +73,6 @@ const publisherConfig: PublisherConfig = {
     }
 };
 ```
-### Overview
-
-The `Publisher` class is responsible for sending events to Redis streams. It supports configuration for success and error callbacks, making it flexible for various use cases.
 
 ### Usage
 
