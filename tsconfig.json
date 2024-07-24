@@ -1,33 +1,34 @@
 {
     "compilerOptions": {
-        "module": "commonjs",
-        "declaration": true,
-        "removeComments": true,
-        "emitDecoratorMetadata": true,
-        "experimentalDecorators": true,
-        "allowSyntheticDefaultImports": true,
-        "target": "es2021",
-        "sourceMap": true,
-        "incremental": true,
-        "skipLibCheck": true,
-        "strictNullChecks": false,
-        "noImplicitAny": false,
-        "strictBindCallApply": false,
-        "forceConsistentCasingInFileNames": false,
-        "noFallthroughCasesInSwitch": false,
-        "esModuleInterop": true,
-        "composite": true,
-        "outDir": "./dist", // Output directory for compiled files
-        "rootDir": "./lib", // Root directory of the source files
-        "strict": true, // Enable all strict type-checking options
+      "module": "commonjs", // Keep for Node.js compatibility
+      "declaration": true, // Keep to generate declaration files for TypeScript consumers
+      "removeComments": true, // Keep to reduce file size by removing comments
+      "emitDecoratorMetadata": true, // Keep if your library uses decorators
+      "experimentalDecorators": true, // Keep if your library uses decorators
+      "allowSyntheticDefaultImports": true, // Keep for compatibility with non-ES module systems
+      "target": "es2021", // Keep for modern JavaScript features
+      "incremental": true, // Keep for faster builds by reusing information from previous builds
+      "skipLibCheck": true, // Keep to speed up compilation by skipping type checks on declaration files
+      "strictNullChecks": false, // Keep as per your current configuration (consider enabling for stricter type checks)
+      "noImplicitAny": false, // Keep as per your current configuration (consider enabling for stricter type checks)
+      "strictBindCallApply": false, // Keep as per your current configuration (consider enabling for stricter type checks)
+      "forceConsistentCasingInFileNames": true, // Enable to enforce consistent file name casing across platforms
+      "noFallthroughCasesInSwitch": true, // Enable to prevent fallthrough cases in switch statements
+      "esModuleInterop": true, // Keep for compatibility with CommonJS modules
+      "composite": false, // Remove as it's primarily useful for large projects and slows down compilation for libraries
+      "outDir": "./dist", // Keep as the output directory for compiled files
+      "rootDir": "./lib", // Keep as the root directory of the source files
+      "strict": true, // Keep to enable all strict type-checking options
+      "moduleResolution": "node", // Add to ensure Node.js module resolution
+      "resolveJsonModule": true // Add to allow importing JSON files as modules
     },
     "exclude": [
-        "node_modules",
-        "dist",
-        "tests",
-        "examples"
+      "node_modules",
+      "dist",
+      "src/test",
+      "examples"
     ],
     "include": [
-        "lib/**/*"
+      "lib/**/*"
     ]
-}
+  }
