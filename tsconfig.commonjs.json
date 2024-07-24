@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "module": "CommonJS",
+        "target": "es2021",
+        "declaration": true,
+        "removeComments": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "allowSyntheticDefaultImports": true,
+        "incremental": true,
+        "skipLibCheck": true,
+        "strictNullChecks": false,
+        "noImplicitAny": false,
+        "strictBindCallApply": false,
+        "forceConsistentCasingInFileNames": true,
+        "noFallthroughCasesInSwitch": true,
+        "esModuleInterop": true,
+        "outDir": "./dist/cjs",
+        "rootDir": "./lib",
+        "strict": true,
+        "moduleResolution": "node",
+        "resolveJsonModule": true
+    },
+    "exclude": [
+        "node_modules",
+        "dist",
+        "src/test",
+        "examples"
+    ],
+    "include": [
+        "lib/**/*"
+    ]
+}
