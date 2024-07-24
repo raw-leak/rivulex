@@ -9,9 +9,9 @@
     "author": "Mykhaylo Gusak",
     "license": "MIT",
     "type": "module",
-    "main": "dist/cjs/index.js",
-    "module": "dist/esm/index.js",
-    "types": "dist/cjs/index.d.ts",
+    "main": "dist/index.js",
+    "module": "dist/index.js",
+    "types": "dist/index.d.ts",
     "files": [
         "dist/",
         "README.md",
@@ -42,9 +42,7 @@
     "homepage": "https://github.com/raw-leak/rivulex#readme",
     "scripts": {
         "clean": "rm -rf dist",
-        "build:cjs": "tsc -p tsconfig.commonjs.json",
-        "build:esm": "tsc -p tsconfig.esm.json",
-        "build": "npm run clean && npm run build:cjs && npm run build:esm",
+        "build": "npm run clean && tsc",
         "lint": "eslint 'lib/**/*.{ts,tsx}'",
         "test": "jest"
     },
