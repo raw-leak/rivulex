@@ -62,7 +62,7 @@ export class FailedConsumer {
         this.count = count;
         this.retries = retries;
 
-        this.backoff = new Backoff({ max: 30 });
+        this.backoff = new Backoff({ minInterval: 1_000, maxInterval: this.timeout });
         this.processor = new Processor({ retries: this.retries, group }, this.redis, this.logger);
         this.formatter = new Formatter()
 
@@ -132,8 +132,9 @@ export class FailedConsumer {
                         this.backoff.reset()
                     } else {
                         this.backoff.increase()
-                        await this.backoff.wait()
                     }
+
+                    await this.backoff.wait()
                 }
             })()
         }
