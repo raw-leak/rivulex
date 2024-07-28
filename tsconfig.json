@@ -4,7 +4,6 @@
       "declaration": true, // Keep to generate declaration files for TypeScript consumers
       "removeComments": true, // Keep to reduce file size by removing comments
       "target": "es2021", // Keep for modern JavaScript features
-      "incremental": true, // Keep for faster builds by reusing information from previous builds
       "skipLibCheck": true, // Keep to speed up compilation by skipping type checks on declaration files
       "strictNullChecks": false, // Keep as per your current configuration (consider enabling for stricter type checks)
       "noImplicitAny": false, // Keep as per your current configuration (consider enabling for stricter type checks)
