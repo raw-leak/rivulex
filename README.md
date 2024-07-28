@@ -6,6 +6,7 @@
 ![Last Tag](https://img.shields.io/github/v/tag/raw-leak/rivulex?label=Last%20Tag)
 ![Version](https://img.shields.io/github/v/release/raw-leak/rivulex)
 ![Contributors](https://img.shields.io/github/contributors/raw-leak/rivulex)
+![Version](https://img.shields.io/npm/v/nestjs-rivulex)
 
 </div>
 
