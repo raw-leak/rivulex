@@ -10,4 +10,4 @@ export { Channel } from './channel/channel';
 export { RivulexPublisherConfig, RivulexSubscriberConfig } from './config/rivulex.config';
 
 // Types
-export { Event, Headers, Done } from "./types"
+export { Event, Headers, Ack } from "./types"
