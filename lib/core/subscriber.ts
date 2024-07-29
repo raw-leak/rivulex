@@ -3,6 +3,7 @@ import { SubscriberConfig } from '../config/subscriber.config';
 import { FailedConsumer } from '../consumers/failed.consumer';
 import { LiveConsumer } from '../consumers/live.consumer';
 import { ChannelsHandlers, Handler, Logger, RedisClient } from '../types';
+import { setDefaultMinMax } from '../utils';
 
 /**
  * The `Subscriber` class is responsible for subscribing to Redis streams, 
@@ -101,28 +102,32 @@ export class Subscriber {
   private block: number;
 
   /**
-   * Default value for the blocking period (30 seconds).
+   * Default and minimum value for the blocking period (30 seconds).
    * @type {number}
    */
   private defaultBlock = 30 * 60 * 1000; // 30 seconds
+  private minBlock = 1 * 1000; // 1 seconds
 
   /**
-   * Default value for the timeout period (10 minutes).
+   * Default and minimum value for the timeout period (30 seconds).
    * @type {number}
    */
-  private defaultTimeout = 10 * 60 * 60 * 1000; // 10 minutes
+  private defaultTimeout = 30 * 60 * 1000; // 30 seconds
+  private minTimeout = 1 * 1000; // 1 seconds
 
   /**
-   * Default number of retries before an event is sent to the dead letter stream.
+   * Default and minimum number of retries before an event is sent to the dead letter stream.
    * @type {number}
    */
   private defaultRetries = 3;
+  private minRetries = 1;
 
   /**
-   * Default number of events fetched per request to Redis.
+   * Default and minimum number of events fetched per request to Redis.
    * @type {number}
    */
   private defaultCount = 100;
+  private minCount = 1;
 
 
   /**
@@ -141,10 +146,10 @@ export class Subscriber {
     if (!redis) throw new Error('Missing required "redis" parameter');
     if (!group) throw new Error('Missing required "group" parameter');
 
-    this.timeout = timeout !== undefined ? timeout : this.defaultTimeout;
-    this.count = count !== undefined ? count : this.defaultCount;
-    this.retries = retries !== undefined ? retries : this.defaultRetries;
-    this.block = block !== undefined ? block : this.defaultBlock;
+    this.timeout = setDefaultMinMax(timeout, this.defaultTimeout, this.minTimeout)
+    this.retries = setDefaultMinMax(retries, this.defaultRetries, this.minRetries)
+    this.count = setDefaultMinMax(count, this.defaultCount, this.minCount);
+    this.block = setDefaultMinMax(block, this.defaultBlock, this.minBlock)
 
     this.clientId = clientId || `rivulex:${group}:sub:${Date.now()}`;
     this.group = group;
