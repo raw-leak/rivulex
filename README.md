@@ -224,7 +224,7 @@ async handleUserCreated(@EventAck() ack: () => void) {
 ```
 
 ### Handling Timeouts
-Each transport layer has a specified `timeout` period within which it must process the event. Immediately after a message is received by a consumer, it remains in the stream. To prevent other consumers from processing the message again, Rivulex sets a timeout, a period of time during which it prevents all consumers from receiving and processing the message. The default visibility timeout for a message is 30 seconds. The minimum is 0 seconds.
+Each transport layer has a specified `timeout` period within which it must process the event. Immediately after a message is received by a consumer, it remains in the stream. To prevent other consumers from processing the message again, Rivulex sets a timeout, a period of time during which it prevents all consumers from receiving and processing the message. The default visibility timeout for a message is 30 seconds. The minimum is 1 second.
 
 ![My Diagram](images/event-life-cycle.png)
 
