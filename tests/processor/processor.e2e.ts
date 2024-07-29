@@ -1,6 +1,6 @@
 import { Redis } from "ioredis";
 import { Processor } from "../../lib/processor/processor";
-import { Done, Handler, RedisClient, Event } from "../../lib/types";
+import { Handler, RedisClient, Event } from "../../lib/types";
 import { Publisher } from "../../lib/core/publisher";
 
 const mockLogger = {
@@ -46,9 +46,9 @@ describe('Processor E2E Tests', () => {
             const eventsAction2 = await generateEvents({ action: action2, group, stream, clientId, attempt: 1, count: 10 });
             const eventsAction3 = await generateEvents({ action: action3, group, stream, clientId, attempt: 1, count: 10 });
 
-            const handlerAction1: Handler = jest.fn(async (_: Event, done: Done) => await done());
-            const handlerAction2: Handler = jest.fn(async (_: Event, done: Done) => await done());
-            const handlerAction3: Handler = jest.fn(async (_: Event, done: Done) => await done());
+            const handlerAction1: Handler = jest.fn(async (event: Event<any, any>) => await event.ack());
+            const handlerAction2: Handler = jest.fn(async (event: Event<any, any>) => await event.ack());
+            const handlerAction3: Handler = jest.fn(async (event: Event<any, any>) => await event.ack());
 
             const actionHandlers: Record<string, Handler> = {
                 [action1]: handlerAction1,
@@ -85,9 +85,9 @@ describe('Processor E2E Tests', () => {
             const eventsAction2 = await generateEvents({ action: action2, group, stream, clientId, attempt: 2, count: 20 });
             const eventsAction3 = await generateEvents({ action: action3, group, stream, clientId, attempt: 2, count: 20 });
 
-            const handlerAction1: Handler = jest.fn(async (_: Event, done: Done) => await done());
-            const handlerAction2: Handler = jest.fn(async (_: Event, done: Done) => await done());
-            const handlerAction3: Handler = jest.fn(async (_: Event, done: Done) => await done());
+            const handlerAction1: Handler = jest.fn(async (event: Event<any, any>) => await event.ack());
+            const handlerAction2: Handler = jest.fn(async (event: Event<any, any>) => await event.ack());
+            const handlerAction3: Handler = jest.fn(async (event: Event<any, any>) => await event.ack());
 
             const actionHandlers: Record<string, Handler> = {
                 [action1]: handlerAction1,
@@ -124,9 +124,9 @@ describe('Processor E2E Tests', () => {
             const eventsAction2 = await generateEvents({ action: action2, group, stream, clientId, attempt: 3, count: 30 });
             const eventsAction3 = await generateEvents({ action: action3, group, stream, clientId, attempt: 3, count: 30 });
 
-            const handlerAction1: Handler = jest.fn(async (_: Event, done: Done) => await done());
-            const handlerAction2: Handler = jest.fn(async (_: Event, done: Done) => await done());
-            const handlerAction3: Handler = jest.fn(async (_: Event, done: Done) => await done());
+            const handlerAction1: Handler = jest.fn(async (event: Event<any, any>) => await event.ack());
+            const handlerAction2: Handler = jest.fn(async (event: Event<any, any>) => await event.ack());
+            const handlerAction3: Handler = jest.fn(async (event: Event<any, any>) => await event.ack());
 
             const actionHandlers: Record<string, Handler> = {
                 [action1]: handlerAction1,
@@ -154,7 +154,7 @@ describe('Processor E2E Tests', () => {
 
             const events = await generateEvents({ action, group, stream, clientId, attempt: 2, count: 20 });
 
-            const handler: Handler = jest.fn(async (_: Event, done: Done) => {
+            const handler: Handler = jest.fn(async (event: Event<any, any>) => {
                 throw new Error('Handler error');
             });
 
@@ -186,12 +186,12 @@ describe('Processor E2E Tests', () => {
 
 
     async function generateEvents({ stream, group, action, attempt, count, clientId }: { stream: string, action: string, group: string, clientId: string, attempt: number, count: number }): Promise<Event<{ id: string }, { id: string }>[]> {
-        const events: Event[] = [];
+        const events: Event<any, any>[] = [];
         const publisher = new Publisher({ channel: stream, group }, redisClient, mockLogger)
 
         for (let i = 0; i < count; i++) {
             const id = `${stream}-${i}`
-            const event = { id, action, channel: 'test-channel', payload: { id }, attempt, headers: { id, timestamp: new Date().toISOString(), group } };
+            const event = { id, action, channel: 'test-channel', payload: { id }, attempt, headers: { id, timestamp: new Date().toISOString(), group }, ack: () => { } };
             event.id = await publisher.publish(event.action, event.payload, event.headers)
             events.push(event)
         }

@@ -30,7 +30,7 @@ export type PendingEvent = [string, string, string, number];
  * @template P - The type of the payload.
  * @template H - The type of the headers.
  */
-export interface Event<P = any, H = any> {
+export interface BaseEvent<P = any, H = any> {
     /**
      * Unique identifier for the event.
      */
@@ -63,9 +63,18 @@ export interface Event<P = any, H = any> {
 }
 
 /**
+ * Represents an event with type parameters for payload, headers, and ack callback.
+ * @template P - The type of the payload.
+ * @template H - The type of the headers.
+ */
+export interface Event<P, H> extends BaseEvent<P, H> {
+    ack: Ack;
+}
+
+/**
  * Function type for marking the event processing as done.
  */
-export interface Done {
+export interface Ack {
     (): void;
 }
 
@@ -78,9 +87,8 @@ export interface Handler<P = any, H = any> {
     /**
      * Handles an event.
      * @param event - The event to handle.
-     * @param done - Callback to be invoked when the handling is done.
      */
-    (event: Event<P, H>, done: Done): void;
+    (event: Event<P, H>): void;
 }
 
 /**
@@ -91,7 +99,7 @@ export type ChannelsHandlers = Map<string, Channel>;
 /**
  * Base structure for event headers.
  */
-interface HeadersBase {
+interface BaseHeaders {
     /**
      * Timestamp of when the event was created.
      */
@@ -122,7 +130,7 @@ interface HeadersBase {
  * Represents the headers of an event, combining the base headers with additional custom properties.
  * @template T - Additional custom header properties.
  */
-export type Headers<T = Record<any, any>> = HeadersBase & T;
+export type Headers<T = Record<any, any>> = BaseHeaders & T;
 
 
 export interface Logger {

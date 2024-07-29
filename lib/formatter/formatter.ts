@@ -1,4 +1,4 @@
-import { Event, Headers, RawEvent } from "../types";
+import { BaseEvent, Headers, RawEvent } from "../types";
 
 /**
  * The `Formatter` class is responsible for converting events to and from
@@ -37,12 +37,12 @@ export class Formatter {
     * 
     * @param {Array<RawEvent>} rawEvents - The raw events retrieved from Redis.
     * 
-    * @returns {Array<Event>} - An array of parsed `Event` objects.
+    * @returns {Array<BaseEvent>} - An array of parsed `BaseEvent` objects.
     * 
     * @template P - The type of the payload.
     * @template H - The type of the headers.
     */
-    parseRawEvents(rawEvents: Array<RawEvent>): Array<Event> {
+    parseRawEvents(rawEvents: Array<RawEvent>): Array<BaseEvent> {
         return rawEvents.map(rawEvent => this.parseRawEvent(rawEvent));
     }
 
@@ -57,7 +57,7 @@ export class Formatter {
     * @template P - The type of the payload.
     * @template H - The type of the headers.
     */
-    parseRawEvent<P = Record<any, any>, H = Record<any, any>>(rawEvent: RawEvent): Event<P, H> {
+    parseRawEvent<P = Record<any, any>, H = Record<any, any>>(rawEvent: RawEvent): BaseEvent<P, H> {
         const [id, [, action, , payload, , headers, , attempt = 0]] = rawEvent;
 
         return {
@@ -66,6 +66,6 @@ export class Formatter {
             payload: JSON.parse(payload),
             headers: JSON.parse(headers),
             attempt,
-        } as Event<P, H>;
+        } as BaseEvent<P, H>;
     }
 }

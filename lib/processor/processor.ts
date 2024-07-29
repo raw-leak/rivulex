@@ -1,7 +1,7 @@
 
 import { Retryer } from "../utils/utils";
 import { Formatter } from "../formatter/formatter";
-import { Event, Done, RedisClient, Handler, Logger } from "../types";
+import { Event, Ack, RedisClient, Handler, Logger, BaseEvent } from "../types";
 
 /**
 * The `Processor` class is responsible for handling events from Redis streams.
@@ -37,20 +37,20 @@ export class Processor {
   }
 
   /**
-  * Creates a `Done` function that confirms an event has been processed successfully.
+  * Creates a `Ack` function that confirms an event has been processed successfully.
   * 
   * @param {string} streamName - The name of the Redis stream.
-  * @param {Event} event - The event to be confirmed.
+  * @param {BaseEvent} baseEvent - The event to be confirmed.
   * 
-  * @returns {Done} - A function that confirms the event.
+  * @returns {Ack} - A function that confirms the event.
   */
-  private confirmEvent(streamName: string, event: Event): Done {
+  private confirmEvent(streamName: string, baseEvent: BaseEvent): Ack {
     return async () => {
       try {
-        await this.retry(() => this.redis.xack(streamName, this.group, event.id))
-        this.logger.log(`CONFIRMED stream: ${streamName} action: ${event.action} id: ${event.id} attempt: ${event.attempt}`)
+        await this.retry(() => this.redis.xack(streamName, this.group, baseEvent.id))
+        this.logger.log(`CONFIRMED stream: ${streamName} action: ${baseEvent.action} id: ${baseEvent.id} attempt: ${baseEvent.attempt}`)
       } catch (error) {
-        this.logger.log(`CONFIRMED_FAILED stream: ${streamName} action: ${event.action} id: ${event.id} attempt: ${event.attempt}`)
+        this.logger.log(`CONFIRMED_FAILED stream: ${streamName} action: ${baseEvent.action} id: ${baseEvent.id} attempt: ${baseEvent.attempt}`)
         this.logger.error(`confirming failed with error: ${error}`)
       }
     }
@@ -60,14 +60,14 @@ export class Processor {
   * Skips processing of an event and acknowledges it.
   * 
   * @param {string} streamName - The name of the Redis stream.
-  * @param {Event} event - The event to be skipped.
+  * @param {BaseEvent} baseEvent - The event to be skipped.
   */
-  private async skipEvent(streamName: string, event: Event) {
+  private async skipEvent(streamName: string, baseEvent: BaseEvent) {
     try {
-      await this.retry(() => this.redis.xack(streamName, this.group, event.id))
-      this.logger.debug(`SKIPPED stream: ${streamName} action: ${event.action} id: ${event.id} attempt: ${event.attempt}`)
+      await this.retry(() => this.redis.xack(streamName, this.group, baseEvent.id))
+      this.logger.debug(`SKIPPED stream: ${streamName} action: ${baseEvent.action} id: ${baseEvent.id} attempt: ${baseEvent.attempt}`)
     } catch (error) {
-      this.logger.log(`SKIPPED_FAILED stream: ${streamName} action: ${event.action} id: ${event.id} attempt: ${event.attempt}`)
+      this.logger.log(`SKIPPED_FAILED stream: ${streamName} action: ${baseEvent.action} id: ${baseEvent.id} attempt: ${baseEvent.attempt}`)
       this.logger.error(`skipping failed with error: ${error}`)
     }
   }
@@ -79,28 +79,33 @@ export class Processor {
   * @param {string} streamName - The name of the Redis stream.
   * @param {Event} event - The event to be rejected.
   */
-  private async rejectEvent(streamName: string, event: Event) {
+  private async rejectEvent(streamName: string, baseEvent: BaseEvent) {
     try {
       const rejectedHeaders = {
-        ...event.headers,
+        ...baseEvent.headers,
         rejected: true,
         rejectedGroup: this.group,
         rejectedTimestamp: new Date().toISOString()
       } as Headers;
 
       const pipeline = this.redis.pipeline();
-      const eventArgs = this.formatter.formatEventForSend(event.action, event.payload, rejectedHeaders, this.group);
+      const eventArgs = this.formatter.formatEventForSend(baseEvent.action, baseEvent.payload, rejectedHeaders, this.group);
 
       pipeline.xadd(this.deadLetter, '*', ...eventArgs);
-      pipeline.xack(streamName, this.group, event.id);
+      pipeline.xack(streamName, this.group, baseEvent.id);
 
       await this.retry(() => pipeline.exec())
-      this.logger.log(`REJECTED stream: ${streamName} action: ${event.action} id: ${event.id} attempt: ${event.attempt}`)
+      this.logger.log(`REJECTED stream: ${streamName} action: ${baseEvent.action} id: ${baseEvent.id} attempt: ${baseEvent.attempt}`)
     } catch (error) {
-      this.logger.log(`REJECTED_FAILED stream: ${streamName} action: ${event.action} id: ${event.id} attempt: ${event.attempt}`)
+      this.logger.log(`REJECTED_FAILED stream: ${streamName} action: ${baseEvent.action} id: ${baseEvent.id} attempt: ${baseEvent.attempt}`)
       this.logger.error(`rejection failed with error: ${error}`)
     }
 
+  }
+
+  processEvent<P, H>(baseEvent: BaseEvent<P, H>, ack: Ack): Event<P, H> {
+    (baseEvent as Event<P, H>).ack = ack;
+    return baseEvent as Event<P, H>;
   }
 
 
@@ -113,31 +118,35 @@ export class Processor {
   * 
   * @template T - The type of the payload in the event.
   */
-  async process<T>(streamName: string, events: Array<Event>, actionHandlers: Record<string, Handler>) {
+  async process<T>(streamName: string, baseEvents: Array<BaseEvent>, actionHandlers: Record<string, Handler>) {
     await Promise.all(
-      events.map(async (event) => {
+      baseEvents.map(async (baseEvent) => {
 
-        const isForAnotherGroup = event.headers.rejected && event.headers.rejectedGroup !== this.group;
-        if (isForAnotherGroup) {
-          await this.skipEvent(streamName, event)
-          return
+        const { headers, action, attempt, id } = baseEvent;
+        const { rejected, rejectedGroup } = headers;
+
+        if (rejected && rejectedGroup !== this.group) {
+          await this.skipEvent(streamName, baseEvent);
+          return;
         }
 
-        const actionHandler = actionHandlers[event.action]
+        const actionHandler = actionHandlers[action];
         if (!actionHandler) {
-          await this.skipEvent(streamName, event)
-          return
+          await this.skipEvent(streamName, baseEvent);
+          return;
         }
 
-        if (event.attempt >= this.retries) {
-          await this.rejectEvent(streamName, event)
-          return
+        if (attempt >= this.retries) {
+          await this.rejectEvent(streamName, baseEvent);
+          return;
         }
+
+        const eventWithAck = this.processEvent(baseEvent, this.confirmEvent(streamName, baseEvent));
 
         try {
-          await actionHandler(event, this.confirmEvent(streamName, event))
+          await actionHandler(eventWithAck);
         } catch (error) {
-          this.logger.log(`FAILED stream: ${streamName} action: ${event.action} id: ${event.id} attempt: ${event.attempt}`)
+          this.logger.log(`FAILED stream: ${streamName} action: ${action} id: ${id} attempt: ${attempt}`);
         }
       }),
     );

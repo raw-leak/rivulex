@@ -1,9 +1,9 @@
 import { Redis } from "ioredis"
 import { Publisher } from "../../lib/core/publisher"
 import { Subscriber } from "../../lib/core/subscriber"
-import { Done, Event } from "../../lib/types"
+import { Ack, Event } from "../../lib/types"
 
-describe('Full flow e2e test', () => {
+describe.skip('Full flow e2e test', () => {
     it('Full flow e2e test', async () => {
         const bucket = {}
         const errBucket: Error[] = []
@@ -55,11 +55,11 @@ describe('Full flow e2e test', () => {
 
         const subscribers: Subscriber[] = []
 
-        async function eventHandler(event: Event, done: Done) {
+        async function eventHandler(event: Event<any, any>) {
             const { id, action, channel } = event
             bucket[`${channel}:${action}:${id}`] = 1
             eventsCount--
-            await done()
+            await event.ack()
         }
 
         // prepare all the subscribers

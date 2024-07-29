@@ -1,7 +1,7 @@
 import { Backoff } from "../utils/backoff";
 import { Formatter } from "../formatter/formatter";
 import { Processor } from "../processor/processor";
-import { PendingEvent, RawEvent, RedisClient, Event, ChannelsHandlers, Logger } from "../types";
+import { PendingEvent, RawEvent, RedisClient, BaseEvent, ChannelsHandlers, Logger } from "../types";
 
 /**
 * Configuration object for the `FailedConsumer` class.
@@ -68,7 +68,7 @@ export class FailedConsumer {
 
     }
 
-    private async fetchFailedEvents(streamName: string): Promise<Array<Event> | undefined> {
+    private async fetchFailedEvents(streamName: string): Promise<Array<BaseEvent> | undefined> {
         const pendingEventsInfo = await this.redis.xpending(
             streamName,
             this.group,
