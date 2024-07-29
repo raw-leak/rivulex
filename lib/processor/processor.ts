@@ -1,5 +1,5 @@
 
-import { Retryer } from "../utils/utils";
+import { Retryer } from "../utils";
 import { Formatter } from "../formatter/formatter";
 import { Event, Ack, RedisClient, Handler, Logger, BaseEvent } from "../types";
 
@@ -31,7 +31,7 @@ export class Processor {
     this.redis = redis;
     this.logger = logger;
     this.group = group;
-    this.retries = retries || 3;
+    this.retries = retries;
     this.formatter = new Formatter()
     this.retry = Retryer(3, 3_000)
   }
