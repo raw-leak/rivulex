@@ -43,10 +43,10 @@
         "clean": "rm -rf dist",
         "build": "npm run clean && tsc",
         "lint": "eslint 'lib/**/*.{ts,tsx}'",
-        "test": "jest"
+        "test": "jest --runInBand"
     },
     "dependencies": {
-        "ioredis": "^5.4.1"
+        "ioredis": "5.4.1"
     },
     "devDependencies": {
         "@types/jest": "^29.5.12",
