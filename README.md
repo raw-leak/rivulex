@@ -105,14 +105,14 @@ The `Subscriber` class listens to Redis streams and processes events. It support
 
 When creating a Subscriber instance, you need to provide a configuration object with the following parameters:
 
-| **Parameter** | **Description** | **Required** | **Default Value** |
-|---------------|-----------------|--------------|-------------------|
-| `clientId`    | The unique identifier for the subscriber. If not provided, a default value is generated. | No           | `rivulex:{group}:sub:{Date.now()}` |
-| `group`       | The group name for the subscriber. Subscribers with the same group name share the workload. | Yes          | -                 |
-| `timeout`     | The maximum time in milliseconds to wait for an event before retrying. | No           | `600_000` ms (10 minutes) |
-| `count`       | The maximum number of messages fetched in each request from Redis Stream. | No           | `100`                 |
-| `block`       | The time in milliseconds that the subscriber blocks while waiting for new events. | No           | `30_000` ms (30 seconds) |
-| `retries`     | The number of times the subscriber will attempt to process an event before sending it to the dead letter queue. | No           | `3`                 |
+| **Parameter** | **Description** | **Required** | **Default Value** | **Minimum Value** | **Maximum Value** |
+|---------------|-----------------|--------------|-------------------|-------------------|-------------------|
+| `clientId`    | The unique identifier for the subscriber. If not provided, a default value is generated. | No           | `rivulex:{group}:sub:{Date.now()}` | - | - |
+| `group`       | The group name for the subscriber. Subscribers with the same group name share the workload. | Yes          | -                 | - | - |
+| `timeout`     | The maximum time in milliseconds to wait for an event before retrying. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second) | - |
+| `count`       | The maximum number of messages fetched in each request from Redis Stream. | No           | `100`                 | `1` | - |
+| `block`       | The time in milliseconds that the subscriber blocks while waiting for new events. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second)| - |
+| `retries`     | The number of times the subscriber will attempt to process an event before sending it to the dead letter queue. | No           | `3`| `1` | - |
 
 ### Example Configuration Parameters
 
@@ -201,6 +201,46 @@ export interface Event<P = any, H = any> {
 - `headers: Headers<H>`: Extra information about the event. For example, it could include metadata like the event's source or priority. You can customize what these headers contain.
 
 - `payload: P`: The main data of the event. This is what the event is carrying. For example, if the event is about a new order, the payload might include order details.
+
+
+## Acknowledgment and Timeouts
+In `nestjs-rivulex`, acknowledging processed events is a critical step to ensure the reliability and efficiency of your event-driven system. When an event is received and processed by a handler, you must acknowledge the event to indicate its successful processing. Failing to acknowledge an event will result in the event being considered as unprocessed, and it may be picked up by other consumers for reprocessing.
+
+<details>
+<summary>More on Acknowledgment and Timeouts</summary>
+
+### How Acknowledgment Works
+Each event handler is provided with an ack function, which you must call after successfully processing the event. This function notifies the system that the event has been handled and can be safely removed from the stream.
+
+```typescript
+@Action('user_created')
+async handleUserCreated(@EventAck() ack: () => void) {
+    // Process the event
+    // ...
+
+    // Acknowledge the event
+    await ack();
+}
+```
+
+### Handling Timeouts
+Each transport layer has a specified `timeout` period within which it must process the event. Immediately after a message is received by a consumer, it remains in the stream. To prevent other consumers from processing the message again, Rivulex sets a timeout, a period of time during which it prevents all consumers from receiving and processing the message. The default visibility timeout for a message is 30 seconds. The minimum is 0 seconds.
+
+![My Diagram](images/event-life-cycle.png)
+
+### Best Practices for Setting Timeouts
+To avoid processing the same event multiple times and to ensure efficient event handling, it's essential to set appropriate timeout periods. Here are some best practices for setting timeouts:
+
+1. **Estimate Processing Time**: Consider the average time required to process an event. The timeout should be set to a value slightly higher than this estimate to account for occasional delays.
+2. **Avoid Short Timeouts**: Setting the timeout too short may result in events timing out frequently, causing unnecessary reprocessing and potential duplicate handling. Ensure that the timeout is long enough to cover the worst-case processing time.
+3. **Use Consistent Timeout Values**: For similar types of events, use consistent timeout values to simplify configuration and monitoring.
+4. **Monitor and Adjust**: Continuously monitor the processing times and adjust the timeout values as necessary. Use metrics and logs to identify patterns and make informed adjustments.
+
+### Recommended Timeout Settings
+
+Based on industry best practices, such as those from AWS SQS, a general recommendation is to set the visibility timeout to at least twice the average processing time. For example, if the average processing time for an event is 5 seconds, set the visibility timeout to at least 10 seconds. This provides a buffer to handle occasional delays and reduces the likelihood of events timing out unnecessarily.
+
+</details>
 
 ## Examples
 

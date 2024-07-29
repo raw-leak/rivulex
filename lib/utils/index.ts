@@ -12,3 +12,15 @@ export function Retryer(retries: number, delay: number) {
         }
     };
 }
+
+
+export function setDefaultMinMax(value: number, defaultVal: number, minVal: number = 0, maxVal: number = 1_000_000): number {
+    let result = value !== undefined ? value : defaultVal;
+    if (result < minVal) {
+        result = minVal;
+    }
+    if (result > maxVal) {
+        result = maxVal;
+    }
+    return result;
+}
