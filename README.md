@@ -33,6 +33,7 @@ With Rivulex, you can build scalable, reliable, and efficient messaging systems 
 -  [Publisher](#publisher)
 -  [Subscriber](#subscriber)
 -  [Event Interface](#event-interface)
+-  [Acknowledgment and Timeouts](#acknowledgment-and-timeouts)
 -  [Examples](#examples)
 -  [API Reference](#api-reference)
 -  [Contributing](#contributing)
