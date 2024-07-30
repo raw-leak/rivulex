@@ -14,14 +14,14 @@ Rivulex is a high-performance messaging system built on Redis Streams and writte
 
 
 ### Key Features:
-- **At-Least-Once Delivery**: Rivulex ensures that every message is delivered at least once, making it suitable for scenarios where message loss is unacceptable.
-- **FIFO Messaging**: Leveraging Redis Streams, Rivulex provides a FIFO (First-In-First-Out) order for message processing, ensuring predictable and reliable message handling.
+- **At-Least-Once Delivery**: Rivulex ensures that every event is delivered at-least-once, making it suitable for scenarios where event loss is unacceptable.
+- **FIFO Messaging**: Leveraging Redis Streams, Rivulex provides a FIFO (First-In-First-Out) order for event processing, ensuring predictable and reliable event handling.
 - **Distributed and Scalable**: Built to handle horizontal scaling, Rivulex supports the creation of consumer groups, allowing you to efficiently scale out your messaging system across multiple instances.
 - **Flexible Configuration**: Easily configure timeouts, blocking behavior, retries, and more to tailor the system to your specific needs.
-- **Error Handling and Logging**: Integrates customizable error handling and logging, providing insights into message processing and failures.
+- **Error Handling and Logging**: Integrates customizable error handling and logging, providing insights into event processing and failures.
 
 ### Use Cases:
-- **Event-Driven Architectures**: Perfect for building systems that rely on events and need reliable message delivery.
+- **Event-Driven Architectures**: Perfect for building systems that rely on events and need reliable event delivery.
 - **Microservices**: Facilitates communication between microservices in distributed systems.
 - **Real-Time Data Processing**: Suitable for applications that require real-time processing and streaming of data.
 
@@ -58,8 +58,8 @@ When creating a `Publisher` instance, you need to provide a configuration object
 |------------------------|---------------------------------------------------------------------------------|--------------|--------------------------------------------|
 | `channel`              | The Redis stream channel to publish events to.                                   | Yes          | -                                          |
 | `group`                | The consumer group to associate with the events.                                 | Yes          | -                                          |
-| `onMessagePublished`   | Callback function called when a message is successfully published.               | No           | Uses default callback if not provided.     |
-| `onPublishFailed`      | Callback function called when publishing a message fails.                        | No           | Uses default callback if not provided.     |
+| `onMessagePublished`   | Callback function called when an event is successfully published.               | No           | Uses default callback if not provided.     |
+| `onPublishFailed`      | Callback function called when publishing an event fails.                        | No           | Uses default callback if not provided.     |
 
 ### Example Configuration Parameters
 
@@ -94,7 +94,7 @@ const config = {
 
 const publisher = Rivulex.publisher(config);
 
-// Example: Publishing a message
+// Example: Publishing an event
 publisher.publish('user_created', { id: "123", email: "user@email.com" }, { requestId: '123' });
 ```
 
@@ -111,7 +111,7 @@ When creating a Subscriber instance, you need to provide a configuration object 
 | `clientId`    | The unique identifier for the subscriber. If not provided, a default value is generated. | No           | `rivulex:{group}:sub:{Date.now()}` | - | - |
 | `group`       | The group name for the subscriber. Subscribers with the same group name share the workload. | Yes          | -                 | - | - |
 | `timeout`     | The maximum time in milliseconds to wait for an event before retrying. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second) | - |
-| `count`       | The maximum number of messages fetched in each request from Redis Stream. | No           | `100`                 | `1` | - |
+| `count`       | The maximum number of events fetched in each request from Redis Stream. | No           | `100`                 | `1` | - |
 | `block`       | The time in milliseconds that the subscriber blocks while waiting for new events. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second)| - |
 | `retries`     | The number of times the subscriber will attempt to process an event before sending it to the dead letter queue. | No           | `3`| `1` | - |
 
@@ -176,7 +176,7 @@ await subscriber.stop()
 ```
 ## Event Interface
 
-The Event interface in Rivulex is used to represent messages or events that are passed through the system. It provides a structure for the event's data and metadata.
+The Event interface in Rivulex is used to represent events that are passed through the system. It provides a structure for the event's data and metadata.
 
 ### Interface Definition
 ```ts
@@ -225,7 +225,7 @@ async handleUserCreated(@EventAck() ack: () => void) {
 ```
 
 ### Handling Timeouts
-Each transport layer has a specified `timeout` period within which it must process the event. Immediately after a message is received by a consumer, it remains in the stream. To prevent other consumers from processing the message again, Rivulex sets a timeout, a period of time during which it prevents all consumers from receiving and processing the message. The default visibility timeout for a message is 30 seconds. The minimum is 1 second.
+Each transport layer has a specified `timeout` period within which it must process the event. Immediately after an event is received by a consumer, it remains in the stream. To prevent other consumers from processing the event again, Rivulex sets a timeout, a period of time during which it prevents all consumers from receiving and processing the event. The default visibility timeout for an event is 30 seconds. The minimum is 1 second.
 
 ![My Diagram](images/event-life-cycle.png)
 
