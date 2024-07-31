@@ -1,5 +1,6 @@
 
-import pLimit, { LimitFunction } from "p-limit";
+import * as pLimit from "p-limit";
+import { LimitFunction } from "p-limit";
 
 import { Retrier } from "../utils/retrier";
 import { Formatter } from "../utils/formatter";
@@ -80,7 +81,7 @@ export class Processor {
 
     this.formatter = new Formatter()
     this.retrier = new Retrier(this.RETRY, this.RETRY_BACKOFF_TIME)
-    this.limit = pLimit(this.processBatchSize);
+    this.limit = pLimit.default(this.processBatchSize);
   }
 
   private log(status: string, streamName: string, baseEvent: BaseEvent, error?: Error) {
