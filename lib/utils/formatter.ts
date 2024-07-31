@@ -42,8 +42,8 @@ export class Formatter {
     * @template P - The type of the payload.
     * @template H - The type of the headers.
     */
-    parseRawEvents(rawEvents: Array<RawEvent>): Array<BaseEvent> {
-        return rawEvents.map(rawEvent => this.parseRawEvent(rawEvent));
+    parseRawEvents(rawEvents: Array<RawEvent>, channel: string): Array<BaseEvent> {
+        return rawEvents.map(rawEvent => this.parseRawEvent(rawEvent, channel));
     }
 
 
@@ -57,7 +57,7 @@ export class Formatter {
     * @template P - The type of the payload.
     * @template H - The type of the headers.
     */
-    parseRawEvent<P = Record<any, any>, H = Record<any, any>>(rawEvent: RawEvent): BaseEvent<P, H> {
+    parseRawEvent<P = Record<any, any>, H = Record<any, any>>(rawEvent: RawEvent, channel: string): BaseEvent<P, H> {
         const [id, [, action, , payload, , headers, , attempt = 0]] = rawEvent;
 
         return {
@@ -66,6 +66,7 @@ export class Formatter {
             payload: JSON.parse(payload),
             headers: JSON.parse(headers),
             attempt,
+            channel,
         } as BaseEvent<P, H>;
     }
 }

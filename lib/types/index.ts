@@ -88,7 +88,7 @@ export interface Handler<P = any, H = any> {
      * Handles an event.
      * @param event - The event to handle.
      */
-    (event: Event<P, H>): void;
+    (event: Event<P, H>): Promise<void> | void;
 }
 
 /**

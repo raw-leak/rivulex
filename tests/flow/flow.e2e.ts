@@ -1,49 +1,88 @@
 import { Redis } from "ioredis"
+
 import { Publisher } from "../../lib/core/publisher"
 import { Subscriber } from "../../lib/core/subscriber"
-import { Ack, Event } from "../../lib/types"
+import { Event } from "../../lib/types"
 
-describe.skip('Full flow e2e test', () => {
+import { SilentLogger, sleep } from "../utils"
+
+interface EventInfo {
+    group: string
+    action: string
+    entityId: string
+    failedTimes: number
+    timeoutTimes: number
+    processedTimes: number
+}
+
+describe('Full flow e2e test', () => {
     it('Full flow e2e test', async () => {
-        const bucket = {}
-        const errBucket: Error[] = []
-        let eventsCount = 0;
+        const bucket: Record<string, EventInfo> = {}
 
         type Payload = { id: string }
         type Headers = { id: string }
 
         const redisClient = new Redis({ host: "localhost", port: 6379 })
 
+        await redisClient.flushall()
+        const logger = new SilentLogger()
+
+        const retries = 2;
+        const timeout = 3_000
+
         const stream1 = "stream-1"
         const stream2 = "stream-2"
         const stream3 = "stream-3"
 
-        const group1 = "receiver-1"
-        const group2 = "receiver-2"
-        const group3 = "receiver-3"
+        // const streams = [stream1, stream2, stream3]
+        const streams = [stream1]
 
-        const action1 = "action-1"
-        const action2 = "action-2"
-        const action3 = "action-3"
+        const group1 = "group-1"
+        const group2 = "group-2"
+        const group3 = "group-3"
+
+        // const groups = [group1, group2, group3]
+        const groups = [group1]
+        const subscriberCount = 1
+
+        const rejectedAction = "rejected" // always thrown error
+        const timeoutAction = "timeout" // always timeout
+        const randomOkAction = "random-ok" // eventually will be processed
+        const okAction = "ok" // processed in first action
+
+        // const actions = [rejectedAction, timeoutAction, randomOkAction, okAction]
+        const actions = [rejectedAction, okAction]
 
         const senderGroup = "sender"
 
-        const publisher1 = new Publisher({ group: senderGroup, channel: stream1 }, redisClient, console);
-        const publisher2 = new Publisher({ group: senderGroup, channel: stream2 }, redisClient, console);
-        const publisher3 = new Publisher({ group: senderGroup, channel: stream2 }, redisClient, console);
+        const publisher1 = new Publisher({ group: senderGroup, channel: stream1 }, redisClient.duplicate(), logger);
+        const publisher2 = new Publisher({ group: senderGroup, channel: stream2 }, redisClient.duplicate(), logger);
+        const publisher3 = new Publisher({ group: senderGroup, channel: stream2 }, redisClient.duplicate(), logger);
+        const eventCount = 10
+
+        const publishers = [publisher1]
 
         // sent publishers to start publishing
-        (async () => {
-            await Promise.all([publisher1, publisher2, publisher3].map(async pub => {
-                for (let i = 0; i < 1000; i++) {
-                    for (const action of [action1, action2, action3]) {
+        const startProducing = (async () => {
+            await Promise.all(publishers.map(async pub => {
+                for (let i = 0; i < eventCount; i++) {
+                    for (const action of actions) {
                         try {
-                            const payload: Payload = { id: `${i}` }
-                            const headers: Headers = { id: `${i}` }
+                            const payload: Payload = { id: `${i}` };
+                            const headers: Headers = { id: `${i}` };
 
-                            const id = await pub.publish(action, payload, headers)
-                            bucket[`${pub.channel}:${action}:${id}`] = { id, processed: 0, rejected: 0 };
-                            eventsCount++
+                            const id = await pub.publish(action, payload, headers);
+                            for (const group of groups) {
+                                const entityId = `${pub.channel}:${group}:${action}:${id}`;
+                                bucket[entityId] = {
+                                    failedTimes: 0,
+                                    timeoutTimes: 0,
+                                    processedTimes: 0,
+                                    action,
+                                    group,
+                                    entityId
+                                }
+                            }
                         } catch (error) {
                             console.error(error)
                         }
@@ -55,31 +94,64 @@ describe.skip('Full flow e2e test', () => {
 
         const subscribers: Subscriber[] = []
 
-        async function eventHandler(event: Event<any, any>) {
-            const { id, action, channel } = event
-            bucket[`${channel}:${action}:${id}`] = 1
-            eventsCount--
-            await event.ack()
+        function eventHandler(group: string) {
+            return async function (event: Event<any, any>): Promise<void> {
+                const { id, action, channel, attempt, ack } = event
+                const entity = bucket[`${channel}:${group}:${action}:${id}`];
+
+                console.log({ group, action, attempt })
+
+                if (action == rejectedAction) {
+                    entity.failedTimes = 1 + entity.failedTimes
+                    console.log({ entity })
+                    throw new Error("timeout error");
+                }
+                else if (action == timeoutAction) {
+                    entity.timeoutTimes = 1 + entity.timeoutTimes
+                    // do nothing as it is a timeout error
+                }
+                else if (action == okAction) {
+                    await ack();
+                    entity.processedTimes = 1 + entity.processedTimes
+                }
+                else if (action == randomOkAction) {
+                    if (attempt >= retries) {
+                        await ack();
+                        entity.processedTimes = 1 + entity.processedTimes
+                        return;
+                    }
+                    else if (attempt == 0) {
+                        entity.failedTimes = 1 + entity.failedTimes
+                        throw new Error("timeout error")
+                    }
+                    else {
+                        entity.timeoutTimes = 1 + entity.timeoutTimes
+                        // do nothing as it is a timeout error
+                    }
+                }
+
+            }
         }
 
         // prepare all the subscribers
-        for (const groupName of [group1, group2, group3]) {
-            for (let i = 0; i < 3; i++) {
+        for (const groupName of groups) {
+            for (let i = 0; i < subscriberCount; i++) {
                 const subscriber = new Subscriber({
                     clientId: `${groupName}-${i}`,
                     group: groupName,
-                    timeout: 5,
-                    count: 100,
-                    block: 10,
-                    retries: 3
-                }, redisClient, console)
+                    count: 1_000,
+                    block: 100,
+                    timeout,
+                    retries
+                }, redisClient.duplicate(), logger)
 
-                for (const stream of [stream1, stream2, stream3]) {
+                for (const stream of streams) {
                     subscriber
                         .stream(stream)
-                        .action(action1, eventHandler)
-                        .action(action2, eventHandler)
-                        .action(action3, eventHandler)
+                        .action(rejectedAction, eventHandler(groupName))
+                        .action(okAction, eventHandler(groupName))
+                    // .action(timeoutAction, eventHandler(groupName))
+                    // .action(randomOkAction, eventHandler(groupName))
                 }
 
                 subscribers.push(subscriber)
@@ -89,19 +161,45 @@ describe.skip('Full flow e2e test', () => {
         // start all the subscribers
         await Promise.all(subscribers.map(async subscribers => await subscribers.listen()))
 
+        await startProducing()
+
         // TODO: wait
-        let wait = true
-        while (wait) {
-            if (eventsCount == 0) {
-                wait = false
-                // TODO: wait for a second
+        // let wait = true
+        // while (wait) {
+        //     if (eventsCount == 0) {
+        //         wait = false
+        //         // TODO: wait for a second
+        //     }
+        // }
+
+        await sleep(1.5 * 60_000)
+
+        for (const eventId in bucket) {
+            console.log("event", bucket[eventId])
+        }
+
+        for (const eventId in bucket) {
+            const { processedTimes, failedTimes, timeoutTimes, action } = bucket[eventId]
+            console.log({ event: bucket[eventId] })
+            if (action == timeoutAction) {
+                expect(processedTimes).toEqual(0)
+                expect(timeoutTimes).toEqual(retries)
+            }
+            else if (action == rejectedAction) {
+                expect(processedTimes).toEqual(0)
+                expect(failedTimes).toEqual(retries)
+            }
+            else if (action == randomOkAction) {
+                expect(processedTimes).toEqual(1)
+                expect(failedTimes).toEqual(1)
+                expect(timeoutTimes).toEqual(1)
+            }
+            else if (action == okAction) {
+                expect(processedTimes).toEqual(1)
+                expect(failedTimes).toEqual(0)
+                expect(timeoutTimes).toEqual(0)
             }
         }
 
-
-        // TODO: verify that the result is successful
-
-
-
-    })
+    }, 10 * 60_000)
 })
