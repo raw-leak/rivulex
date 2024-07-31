@@ -1,18 +1,31 @@
-import { Formatter } from "../formatter/formatter";
+import { Formatter } from "../utils/formatter";
 import { Processor } from "../processor/processor";
 import { ChannelsHandlers, Logger, RawEvent, RedisClient } from "../types";
 
+type XReadGroupResponse = Array<[string, Array<RawEvent> | undefined]> | undefined;
+
 /**
-* Configuration object for the `LiveConsumer` class.
+* Configuration object for the `LiveConsumer` class
 * @interface
 */
 export interface LiveConsumerConfig {
+    /** @type {SubscriberConfig['clientId']} */
     clientId: string;
-    channels: Array<string>;
+
+    /** @type {SubscriberConfig['group']} */
     group: string;
-    retries: number;
-    count: number;
-    block: number;
+
+    /** @type {SubscriberConfig['fetchBatchSize']} */
+    fetchBatchSize: number;
+
+    /** @type {SubscriberConfig['blockTime']} */
+    blockTime: number;
+
+    /**
+    * A list of streams consuming from.
+    * @type {string[]}
+    */
+    streams: Array<string>;
 }
 
 /**
@@ -26,68 +39,70 @@ export interface LiveConsumerConfig {
 * 
 * @param {LiveConsumerConfig} config - Configuration object containing settings for the consumer.
 * @param {RedisClient} redis - The Redis client instance used for interacting with Redis streams.
+* @param {Processor} processor - TODO
 * @param {Logger} logger - The logging instance used for outputting information, warnings, and errors.
 * @throws {Error} Throws an error if the Redis client is missing or invalid, if the channels array is empty or not provided, or if the group parameter is missing.
 * 
 */
 export class LiveConsumer {
     private enabled = false;
-    private processor: Processor;
+
     private clientId: string;
-    private channels: Array<string>;
     private group: string;
-    private count: number;
-    private block: number;
-    private redis: RedisClient;
+    private blockTime: number;
+    private fetchBatchSize: number;
+    private streams: Array<string>;
+
     private logger: Logger;
+    private redis: RedisClient;
+    private processor: Processor;
     private formatter: Formatter;
 
-    constructor(config: LiveConsumerConfig, redis: RedisClient, logger: Logger) {
-        const { clientId, channels, group, count, block, retries } = config;
+    constructor(config: LiveConsumerConfig, redis: RedisClient, processor: Processor, logger: Logger) {
+        const { clientId, streams, group, fetchBatchSize, blockTime } = config;
 
         if (!redis) throw new Error('Missing required "redis" parameter');
-        if (!channels || !channels.length) throw new Error('Missing required "channel" parameter');
+        if (!streams || !streams.length) throw new Error('Missing required "streams" parameter');
         if (!group) throw new Error('Missing required "group" parameter');
 
         this.clientId = clientId;
-        this.channels = channels;
-        this.logger = logger;
-        this.redis = redis;
+        this.streams = streams;
         this.group = group;
-        this.block = block;
-        this.count = count;
 
-        this.processor = new Processor({ retries, group }, this.redis, this.logger)
+        this.blockTime = blockTime;
+        this.fetchBatchSize = fetchBatchSize;
+
+        this.redis = redis;
+        this.logger = logger;
+        this.processor = processor
         this.formatter = new Formatter()
     }
 
-
     /**
-     * Read live streaming messages.
-     * @param {Function} channelsHandlers (REQUIRED) Callback to process incoming messages.
+     * Read live streaming messages
+     * @param {Function} channelsHandlers (REQUIRED) Callback to process incoming messages
      */
-    private processLiveMessages = async <T>(channelsHandlers: ChannelsHandlers) => {
+    private processLiveMessages = async (channelsHandlers: ChannelsHandlers) => {
         const entries = await this.redis.xreadgroup(
             'GROUP',
             this.group,
             this.clientId,
             'COUNT',
-            this.count,
+            this.fetchBatchSize,
             'BLOCK',
-            this.block,
+            this.blockTime,
             'STREAMS',
-            ...this.channels,
-            ...this.channels.map(() => '>'),
-        ) as Array<[string, Array<RawEvent> | undefined]> | undefined;
+            ...this.streams,
+            ...this.streams.map(() => '>'),
+        ) as XReadGroupResponse;
 
         if (entries) {
-            for (const entry of entries) {
-                const [streamName, rawEvents] = entry
+            await Promise.all(entries.map(async ([streamName, rawEvents]) => {
                 if (rawEvents) {
                     const channelHandlers = channelsHandlers.get(streamName)
-                    await this.processor.process<T>(streamName, this.formatter.parseRawEvents(rawEvents), channelHandlers.getHandlers())
+                    await this.processor.process(streamName, this.formatter.parseRawEvents(rawEvents, streamName), channelHandlers.getHandlers())
                 }
-            }
+            }))
         }
     };
 
@@ -95,14 +110,14 @@ export class LiveConsumer {
     * Start consuming events for defined streams with provided handlers
     * @param {Function} channelsHandlers (REQUIRED) Handlers for incoming events.
     */
-    consume = <T>(streams: ChannelsHandlers) => {
+    consume = <T>(channelsHandlers: ChannelsHandlers) => {
         if (!this.enabled) {
             this.enabled = true;
 
             (async () => {
                 while (this.enabled) {
                     try {
-                        await this.processLiveMessages(streams);
+                        await this.processLiveMessages(channelsHandlers);
                     } catch (error) {
                         this.logger.error(`failed to process live messages with error: ${error}`)
                     }
@@ -112,7 +127,7 @@ export class LiveConsumer {
     };
 
     /**
-    * Stop consuming events
+    * Stop consuming live events
     */
     async stop() {
         this.enabled = false;

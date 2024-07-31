@@ -1,19 +1,33 @@
 import { Backoff } from "../utils/backoff";
-import { Formatter } from "../formatter/formatter";
+import { Formatter } from "../utils/formatter";
 import { Processor } from "../processor/processor";
 import { PendingEvent, RawEvent, RedisClient, BaseEvent, ChannelsHandlers, Logger } from "../types";
+
+type XPendingResponse = Array<PendingEvent> | undefined;
 
 /**
 * Configuration object for the `FailedConsumer` class.
 * @interface
 */
 export interface FailedConsumerConfig {
+
+    /** @type {SubscriberConfig['clientId']} */
     clientId: string;
-    channels: Array<string>;
+
+    /** @type {SubscriberConfig['group']} */
     group: string;
-    count: number;
-    timeout: number;
-    retries: number;
+
+    /** @type {SubscriberConfig['fetchBatchSize']} */
+    fetchBatchSize: number;
+
+    /** @type {SubscriberConfig['ackTimeout']} */
+    ackTimeout: number;
+
+    /**
+    * A list of streams consuming from.
+    * @type {string[]}
+    */
+    streams: Array<string>;
 }
 
 /**
@@ -26,45 +40,46 @@ export interface FailedConsumerConfig {
 * 
 * @param {FailedConsumerConfig} config - Configuration object containing settings for the consumer.
 * @param {RedisClient} redis - The Redis client instance used for interacting with Redis streams.
+* @param {Processor} processor - TODO
 * @param {Logger} logger - The logging instance used for outputting information, warnings, and errors.
 * @throws {Error} Throws an error if the Redis client is missing or invalid, if the channels array is empty or not provided, or if the group parameter is missing.
 * 
 */
 export class FailedConsumer {
+    private enabled = false;
+
+    private clientId: string;
+    private group: string;
+    private ackTimeout: number;
+    private fetchBatchSize: number;
+    private streams: Array<string>;
+
+    private logger: Logger;
     private backoff: Backoff;
     private redis: RedisClient;
-    private logger: Logger;
-    private enabled = false;
-    private clientId: string;
-    private channels: Array<string>;
-    private group: string;
-    private timeout: number;
-    private count: number;
-    private retries: number;
     private processor: Processor;
     private formatter: Formatter;
 
-    constructor(config: FailedConsumerConfig, redis: RedisClient, logger: Logger) {
-        const { clientId, channels, group, count, timeout, retries } = config;
+    constructor(config: FailedConsumerConfig, redis: RedisClient, processor: Processor, logger: Logger) {
+        const { clientId, streams, group, fetchBatchSize, ackTimeout } = config;
 
         if (!redis) throw new Error('Missing required "redis" parameter');
-        if (!channels || !channels.length) throw new Error('Missing required "channel" parameter');
+        if (!streams || !streams.length) throw new Error('Missing required "streams" parameter');
         if (!group) throw new Error('Missing required "group" parameter');
         if (!clientId) throw new Error('Missing required "clientId" parameter');
 
         this.clientId = clientId;
-        this.channels = channels;
+        this.streams = streams;
         this.group = group;
+
+        this.ackTimeout = ackTimeout;
+        this.fetchBatchSize = fetchBatchSize;
+
         this.redis = redis;
         this.logger = logger;
-
-        this.timeout = timeout;
-        this.count = count;
-        this.retries = retries;
-
-        this.backoff = new Backoff({ minInterval: 1_000, maxInterval: this.timeout });
-        this.processor = new Processor({ retries: this.retries, group }, this.redis, this.logger);
+        this.processor = processor
         this.formatter = new Formatter()
+        this.backoff = new Backoff({ minInterval: 1_000, maxInterval: this.ackTimeout });
 
     }
 
@@ -73,11 +88,11 @@ export class FailedConsumer {
             streamName,
             this.group,
             'IDLE', // read only messages that have not been confirmed in [timeout] time
-            this.timeout,
+            this.ackTimeout,
             '-', // range starts with [init]
             '+', // range finishes with [end]
-            this.count, // quantity of messages read per request from PEL
-        ) as Array<PendingEvent>;
+            this.fetchBatchSize, // quantity of messages read per request from PEL
+        ) as XPendingResponse;
 
         if (!pendingEventsInfo || !pendingEventsInfo.length) {
             return
@@ -91,19 +106,19 @@ export class FailedConsumer {
             attempts[id] = attempt
         }
 
-        const failedEvents = await this.redis.xclaim(streamName, this.group, this.clientId, this.timeout, ...ids) as Array<RawEvent>;
+        const failedEvents = await this.redis.xclaim(streamName, this.group, this.clientId, this.ackTimeout, ...ids) as Array<RawEvent>;
 
         return failedEvents.map((rawEvent) => {
             rawEvent[1][6] = "attempt";
             rawEvent[1][7] = attempts[rawEvent[0]];
-            return this.formatter.parseRawEvent(rawEvent)
+            return this.formatter.parseRawEvent(rawEvent, streamName)
         })
     }
 
     private processFailedEvents = async (channelsHandlers: ChannelsHandlers): Promise<number> => {
         let failedEventsCount = 0;
 
-        for (const streamName of this.channels) {
+        await Promise.all(this.streams.map(async streamName => {
             const failedEvents = await this.fetchFailedEvents(streamName)
 
             if (failedEvents && failedEvents.length) {
@@ -111,7 +126,7 @@ export class FailedConsumer {
                 const stream = channelsHandlers.get(streamName);
                 await this.processor.process(streamName, failedEvents, stream.getHandlers())
             }
-        }
+        }))
 
         return failedEventsCount
     }

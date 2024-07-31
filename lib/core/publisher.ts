@@ -1,5 +1,5 @@
 import { Headers, Logger, RedisClient } from "../types";
-import { Formatter } from "../formatter/formatter"
+import { Formatter } from "../utils/formatter"
 import { PublisherConfig, PublishErrorCallback, PublishSuccessCallback } from "../config/publisher.config";
 
 /**

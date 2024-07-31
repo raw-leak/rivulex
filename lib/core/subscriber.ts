@@ -2,6 +2,7 @@ import { Channel } from '../channel/channel';
 import { SubscriberConfig } from '../config/subscriber.config';
 import { FailedConsumer } from '../consumers/failed.consumer';
 import { LiveConsumer } from '../consumers/live.consumer';
+import { Processor } from '../processor/processor';
 import { ChannelsHandlers, Handler, Logger, RedisClient } from '../types';
 import { setDefaultMinMax } from '../utils';
 
@@ -39,101 +40,45 @@ export class Subscriber {
   */
   private enabled = false;
 
-  /**
-  * The client ID for the subscriber. Used for identifying the consumer within a group.
-  * @type {string}
-  */
+  /** @type {SubscriberConfig['clientId']} */
   private clientId: string;
 
-  /**
-  * The consumer group name.
-  * @type {string}
-  */
+  /** @type {SubscriberConfig['group']} */
   private group: string;
 
-  /**
-  * The timeout period for processing events, after which an event will be retried.
-  * @type {number}
-  */
-  private timeout: number;
+  /** @type {SubscriberConfig['ackTimeout']} */
+  private ackTimeout: number;
+  private defAckTimeout = 30 * 1000; // 30 seconds
+  private minAckTimeout = 1 * 1000; // 1 seconds
 
-  /**
-  * The number of events to fetch per request to Redis.
-  * @type {number}
-  */
-  private count: number;
+  /** @type {SubscriberConfig['processTimeout']} */
+  private processTimeout: number;
+  private defProcessTimeout = 200; // 200 ms
+  private minProcessTimeout = 20; // 20 ms
 
-  /**
-  * The number of retries allowed before an event is considered failed.
-  * @type {number}
-  */
+  /** @type {SubscriberConfig['fetchBatchSize']} */
+  private fetchBatchSize: number;
+  private defFetchBatchSize = 100;
+  private minFetchBatchSize = 1;
+
+  /** @type {SubscriberConfig['processBatchSize']} */
+  private processBatchSize: number;
+  private defProcessBatchSize = 100;
+  private minProcessBatchSize = 1;
+
+
+  /** @type {SubscriberConfig['retries']} */
   private retries: number;
-
-  /**
-  * The blocking period in milliseconds used for `XREADGROUP` in Redis.
-  * 
-  * This property defines how long the subscriber will wait for new events 
-  * before checking the Redis stream again. The `block` option is critical 
-  * for efficiently managing event retrieval without excessive CPU usage. 
-  * 
-  * When using the `BLOCK` option with `XREADGROUP`, Redis will block the 
-  * connection for the duration specified by the `block` property. During 
-  * this time, the subscriber waits for new entries to be added to the stream. 
-  * If no new entries are added within this period, the subscriber will 
-  * continue to block and wait for new data. This prevents constant polling 
-  * and reduces unnecessary load on the Redis server and the application.
-  * 
-  * **Key Points:**
-  * 
-  * - **Blocking Behavior**: If `BLOCK` is set, the command will wait for the 
-  *   specified duration for new entries. If no new entries are available, 
-  *   the connection remains blocked until new data arrives or the timeout 
-  *   expires.
-  * 
-  * - **Multiple Streams**: The `XREADGROUP` command with `BLOCK` can read from 
-  *   multiple streams simultaneously, allowing the subscriber to handle 
-  *   data from various sources efficiently.
-  * 
-  * **Default Value**: The default block period is set to 30 seconds 
-  *   (30 * 60 * 1000 milliseconds), but it can be customized as needed.
-  * 
-  * @type {number}
-  */
-  private block: number;
-
-  /**
-   * Default and minimum value for the blocking period (30 seconds).
-   * @type {number}
-   */
-  private defaultBlock = 30 * 60 * 1000; // 30 seconds
-  private minBlock = 1 * 1000; // 1 seconds
-
-  /**
-   * Default and minimum value for the timeout period (30 seconds).
-   * @type {number}
-   */
-  private defaultTimeout = 30 * 60 * 1000; // 30 seconds
-  private minTimeout = 1 * 1000; // 1 seconds
-
-  /**
-   * Default and minimum number of retries before an event is sent to the dead letter stream.
-   * @type {number}
-   */
-  private defaultRetries = 3;
+  private defRetries = 3;
   private minRetries = 1;
 
-  /**
-   * Default and minimum number of events fetched per request to Redis.
-   * @type {number}
-   */
-  private defaultCount = 100;
-  private minCount = 1;
-
+  /** @type {SubscriberConfig['blockTime']} */
+  private blockTime: number;
+  private defBlockTime = 30 * 1000; // 30 seconds
+  private minBlockTime = 1 * 1000; // 1 seconds
 
   /**
   * Creates a new instance of the `Subscriber` class.
-  * 
-  * Initializes the subscriber with the provided configuration, Redis client, and logger.
   * 
   * @param {SubscriberConfig} config - Configuration object for the `Subscriber`.
   * @param {RedisClient} redis - The Redis client used to interact with Redis streams.
@@ -141,22 +86,26 @@ export class Subscriber {
   * @throws {Error} - Throws an error if the Redis client or group is missing from the configuration.
   */
   constructor(config: SubscriberConfig, redis: RedisClient, logger: Logger) {
-    const { clientId, group, timeout, count, retries, block } = config;
+    const { clientId, group, processTimeout, ackTimeout, fetchBatchSize, processBatchSize, retries, blockTime } = config;
 
     if (!redis) throw new Error('Missing required "redis" parameter');
     if (!group) throw new Error('Missing required "group" parameter');
 
-    this.timeout = setDefaultMinMax(timeout, this.defaultTimeout, this.minTimeout)
-    this.retries = setDefaultMinMax(retries, this.defaultRetries, this.minRetries)
-    this.count = setDefaultMinMax(count, this.defaultCount, this.minCount);
-    this.block = setDefaultMinMax(block, this.defaultBlock, this.minBlock)
-
     this.clientId = clientId || `rivulex:${group}:sub:${Date.now()}`;
     this.group = group;
-
     this.redis = redis;
     this.logger = logger;
+
     this.channelsHandlers = new Map()
+
+    this.ackTimeout = setDefaultMinMax(ackTimeout, this.defAckTimeout, this.minAckTimeout)
+    this.processTimeout = setDefaultMinMax(processTimeout, this.defProcessTimeout, this.minProcessTimeout)
+    this.retries = setDefaultMinMax(retries, this.defRetries, this.minRetries)
+
+    this.fetchBatchSize = setDefaultMinMax(fetchBatchSize, this.defFetchBatchSize, this.minFetchBatchSize);
+    this.processBatchSize = setDefaultMinMax(processBatchSize, this.defProcessBatchSize, this.minProcessBatchSize);
+    this.blockTime = setDefaultMinMax(blockTime, this.defBlockTime, this.minBlockTime)
+
   }
 
   /**
@@ -167,12 +116,12 @@ export class Subscriber {
       this.redis.xgroup('CREATE', channel, this.group, '0', 'MKSTREAM', (err) => {
         if (err) {
           if (err.message.includes('BUSYGROUP')) {
-            this.logger.log(`Group ${this.group} already exists at stream ${channel}.`);
+            this.logger.debug(`Group ${this.group} already exists at stream ${channel}.`);
           } else {
             throw err;
           }
         } else {
-          this.logger.log(`Group ${this.group} have been created in stream ${channel}.`);
+          this.logger.debug(`Group ${this.group} have been created in stream ${channel}.`);
         }
       });
     }
@@ -199,9 +148,9 @@ export class Subscriber {
   * **Example Usage:**
   * 
   * ```typescript
-  * subscriber.streamAction('users', 'user_created', (event: Event<Payload, Headers<Custom>>, done: Done) => {
+  * subscriber.streamAction('users', 'user_created', (event: Event<Payload, Headers<Custom>>) => {
   *   // Handle the event
-  *   done();
+  *   await event.ack();
   * });
   * ```
   */
@@ -234,9 +183,9 @@ export class Subscriber {
   * 
   * ```typescript
   * const channel = subscriber.stream('users');
-  * channel.action('user_created', (event: Event<Payload, Headers<Custom>>, done: Done) => {
+  * channel.action('user_created', (event: Event<Payload, Headers<Custom>>) => {
   *   // Handle the event
-  *   done();
+  *   await event.ack();
   * });
   * ```
   */
@@ -276,23 +225,29 @@ export class Subscriber {
   */
   async listen() {
     if (!this.enabled) {
-      this.liveConsumer = new LiveConsumer({
-        clientId: this.clientId,
-        channels: [...this.channelsHandlers.keys()],
+
+      const processor = new Processor({
         group: this.group,
         retries: this.retries,
-        block: this.block,
-        count: this.count,
-      }, this.redis, this.logger)
+        processBatchSize: this.processBatchSize,
+        processTimeout: this.processTimeout,
+      }, this.redis, this.logger);
+
+      this.liveConsumer = new LiveConsumer({
+        clientId: this.clientId,
+        streams: [...this.channelsHandlers.keys()],
+        group: this.group,
+        blockTime: this.blockTime,
+        fetchBatchSize: this.fetchBatchSize,
+      }, this.redis, processor, this.logger)
 
       this.failedConsumer = new FailedConsumer({
         clientId: this.clientId,
-        channels: [...this.channelsHandlers.keys()],
+        streams: [...this.channelsHandlers.keys()],
         group: this.group,
-        timeout: this.timeout,
-        retries: this.retries,
-        count: this.count,
-      }, this.redis, this.logger)
+        ackTimeout: this.ackTimeout,
+        fetchBatchSize: this.fetchBatchSize,
+      }, this.redis, processor, this.logger)
 
       await this.createGroup();
 
@@ -313,8 +268,7 @@ export class Subscriber {
   */
   async stop() {
     if (this.enabled) {
-      await this.liveConsumer.stop()
-      await this.failedConsumer.stop()
+      await Promise.all([this.liveConsumer.stop(), this.failedConsumer.stop()])
       this.enabled = false
     }
   }
