@@ -1,7 +1,3 @@
-
-import * as pLimit from "p-limit";
-import { LimitFunction } from "p-limit";
-
 import { Retrier } from "../utils/retrier";
 import { Formatter } from "../utils/formatter";
 import { Event, Ack, RedisClient, Handler, Logger, BaseEvent } from "../types";
@@ -17,9 +13,6 @@ export interface ProcessorConfig {
   /** @type {SubscriberConfig['retries']} */
   retries: number;
 
-  /** @type {SubscriberConfig['processBatchSize']} */
-  processBatchSize: number;
-
   /** @type {SubscriberConfig['processTimeout']} */
   processTimeout: number;
 
@@ -33,17 +26,14 @@ export interface ProcessorConfig {
 export class Processor {
   private retries: number;
   private group: string;
-
-  private processBatchSize: number
   private processTimeout: number
-
-  readonly deadLetter = 'dead_letter';
 
   private retrier: Retrier;
   private logger: Logger;
-  private limit: LimitFunction;
   private formatter: Formatter;
   private redis: RedisClient;
+
+  readonly DEAD_LETTER = 'dead_letter';
 
   private readonly CONFIRMED_STATUS = "CONFIRMED"
   private readonly CONFIRMED_FAILED_STATUS = "CONFIRMED_FAILED"
@@ -69,11 +59,10 @@ export class Processor {
   * @param {Console} logger - The logger for logging information and errors.
   */
   constructor(config: ProcessorConfig, redis: RedisClient, logger: Logger) {
-    const { group, retries, processBatchSize, processTimeout } = config
+    const { group, retries, processTimeout } = config
 
     this.group = group;
     this.retries = retries;
-    this.processBatchSize = processBatchSize;
     this.processTimeout = processTimeout;
 
     this.redis = redis;
@@ -81,7 +70,6 @@ export class Processor {
 
     this.formatter = new Formatter()
     this.retrier = new Retrier(this.RETRY, this.RETRY_BACKOFF_TIME)
-    this.limit = pLimit.default(this.processBatchSize);
   }
 
   private log(status: string, streamName: string, baseEvent: BaseEvent, error?: Error) {
@@ -144,7 +132,7 @@ export class Processor {
       const pipeline = this.redis.pipeline();
       const eventArgs = this.formatter.formatEventForSend(baseEvent.action, baseEvent.payload, rejectedHeaders, this.group);
 
-      pipeline.xadd(this.deadLetter, '*', ...eventArgs);
+      pipeline.xadd(this.DEAD_LETTER, '*', ...eventArgs);
       pipeline.xack(streamName, this.group, baseEvent.id);
 
       await this.retrier.retry(() => pipeline.exec())
@@ -161,7 +149,7 @@ export class Processor {
     return baseEvent as Event<P, H>;
   }
 
-  private async withTimeout(promise: Promise<void>, timeout: number) {
+  private async withTimeout(promise: Promise<void[]>, timeout: number) {
     const signal = AbortSignal.timeout(timeout);
 
     return Promise.race([
@@ -180,16 +168,13 @@ export class Processor {
   * @param {Record<string, Handler>} actionHandlers - The handlers for processing events based on action.
   */
   async process(streamName: string, baseEvents: Array<BaseEvent>, actionHandlers: Record<string, Handler>) {
-    const tasks = baseEvents.map((baseEvent) =>
-      this.limit(() =>
-        this.withTimeout(this.processUnit(streamName, baseEvent, actionHandlers), this.processTimeout)
-      )
-    );
+    const tasks = baseEvents.map((baseEvent) => this.processUnit(streamName, baseEvent, actionHandlers))
 
-    await Promise.all(tasks)
+
+    await this.withTimeout(Promise.all(tasks), this.processTimeout)
       .catch(error => {
-        this.logger.error(`processing failed with error: ${error}`)
-      })
+        this.logger.error(`processing failed with error: ${error}`);
+      });
   }
 
 

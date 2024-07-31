@@ -48,16 +48,6 @@ export interface SubscriberConfig {
     fetchBatchSize?: number;
 
     /**
-    * The maximum number of events to process concurrently at a time.
-    * Set this value to a positive integer to enable concurrent processing.
-    * Set it to 1 to process events serially.
-    * @OPTIONAL
-    * @default 100
-    * @minimum 1
-    */
-    processBatchSize?: number;
-
-    /**
     * The block time (in milliseconds) used in the Redis `XREADGROUP` command.
     * This specifies how long the subscriber will wait for new events before returning if none are available.
     * 

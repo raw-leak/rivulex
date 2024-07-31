@@ -61,12 +61,6 @@ export class Subscriber {
   private defFetchBatchSize = 100;
   private minFetchBatchSize = 1;
 
-  /** @type {SubscriberConfig['processBatchSize']} */
-  private processBatchSize: number;
-  private defProcessBatchSize = 100;
-  private minProcessBatchSize = 1;
-
-
   /** @type {SubscriberConfig['retries']} */
   private retries: number;
   private defRetries = 3;
@@ -86,7 +80,7 @@ export class Subscriber {
   * @throws {Error} - Throws an error if the Redis client or group is missing from the configuration.
   */
   constructor(config: SubscriberConfig, redis: RedisClient, logger: Logger) {
-    const { clientId, group, processTimeout, ackTimeout, fetchBatchSize, processBatchSize, retries, blockTime } = config;
+    const { clientId, group, processTimeout, ackTimeout, fetchBatchSize, retries, blockTime } = config;
 
     if (!redis) throw new Error('Missing required "redis" parameter');
     if (!group) throw new Error('Missing required "group" parameter');
@@ -98,14 +92,11 @@ export class Subscriber {
 
     this.channelsHandlers = new Map()
 
+    this.retries = setDefaultMinMax(retries, this.defRetries, this.minRetries)
+    this.blockTime = setDefaultMinMax(blockTime, this.defBlockTime, this.minBlockTime)
     this.ackTimeout = setDefaultMinMax(ackTimeout, this.defAckTimeout, this.minAckTimeout)
     this.processTimeout = setDefaultMinMax(processTimeout, this.defProcessTimeout, this.minProcessTimeout)
-    this.retries = setDefaultMinMax(retries, this.defRetries, this.minRetries)
-
     this.fetchBatchSize = setDefaultMinMax(fetchBatchSize, this.defFetchBatchSize, this.minFetchBatchSize);
-    this.processBatchSize = setDefaultMinMax(processBatchSize, this.defProcessBatchSize, this.minProcessBatchSize);
-    this.blockTime = setDefaultMinMax(blockTime, this.defBlockTime, this.minBlockTime)
-
   }
 
   /**
@@ -229,7 +220,6 @@ export class Subscriber {
       const processor = new Processor({
         group: this.group,
         retries: this.retries,
-        processBatchSize: this.processBatchSize,
         processTimeout: this.processTimeout,
       }, this.redis, this.logger);
 
