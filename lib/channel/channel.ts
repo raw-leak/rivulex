@@ -21,6 +21,15 @@ export class Channel {
      * @param {string} actionName - The name of the action for which the handler is registered.
      * @param {Handler} handler - The function to handle the event with the given action name.
      * @returns {Channel} - Returns the `Channel` instance to allow for method chaining.
+     * 
+     * **Example Usage:**
+     * 
+     * ```typescript
+     * channel.action('user_created', (event: Event<Payload, Headers<Custom>>) => {
+     *   // Handle the event
+     *   await event.ack();
+     * });
+     * ```
      */
     action(actionName: string, handler: Handler): Channel {
         this.handlers[actionName] = handler;
