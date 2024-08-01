@@ -73,7 +73,7 @@ export class Processor {
   }
 
   private log(status: string, streamName: string, baseEvent: BaseEvent, error?: Error) {
-    this.logger.log(JSON.stringify({ type: "event", status, id: baseEvent.id, stream: streamName, action: baseEvent.action, attempt: baseEvent.attempt }))
+    this.logger.log(JSON.stringify({ type: "event", status, id: baseEvent.id, stream: streamName, action: baseEvent.action, attempt: baseEvent.attempt, timestamp: Date.now() }))
     if (error) {
       this.logger.error(JSON.stringify({ error }))
     }

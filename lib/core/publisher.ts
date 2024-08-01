@@ -66,14 +66,14 @@ export class Publisher {
     * Default handler for successful publishing.
     */
     private defaultOnEventPublished<P, H>(id: string, newEvent: NewEvent<P, H>) {
-        this.logger.log(JSON.stringify({ type: "event", status: this.PUBLISHED_STATUS, id, stream: newEvent.channel, action: newEvent.action }))
+        this.logger.log(JSON.stringify({ type: "event", status: this.PUBLISHED_STATUS, id, stream: newEvent.channel, action: newEvent.action, timestamp: Date.now() }))
     };
 
     /**
      * Default handler for failed publishing.
      */
     private defaultOnPublishFailed<P, H>(newEvent: NewEvent<P, H>, error: Error) {
-        this.logger.log(JSON.stringify({ type: "event", status: this.PUBLISHED_FAILED_STATUS, stream: newEvent.channel, action: newEvent.action }))
+        this.logger.log(JSON.stringify({ type: "event", status: this.PUBLISHED_FAILED_STATUS, stream: newEvent.channel, action: newEvent.action, timestamp: Date.now() }))
         this.logger.error(JSON.stringify(error))
     };
 
