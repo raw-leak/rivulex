@@ -56,8 +56,8 @@ When creating a `Publisher` instance, you need to provide a configuration object
 
 | **Parameter**          | **Description**                                                                 | **Required** | **Default Value**                          |
 |------------------------|---------------------------------------------------------------------------------|--------------|--------------------------------------------|
-| `channel`              | The Redis stream channel to publish events to.                                   | Yes          | -                                          |
-| `group`                | The consumer group to associate with the events.                                 | Yes          | -                                          |
+| `channel`              | The Redis stream channel to publish events to.                                  | Yes          | -                                          |
+| `group`                | The consumer group to associate with the events.                                | Yes          | -                                          |
 | `onMessagePublished`   | Callback function called when an event is successfully published.               | No           | Uses default callback if not provided.     |
 | `onPublishFailed`      | Callback function called when publishing an event fails.                        | No           | Uses default callback if not provided.     |
 
@@ -106,14 +106,15 @@ The `Subscriber` class listens to Redis streams and processes events. It support
 
 When creating a Subscriber instance, you need to provide a configuration object with the following parameters:
 
-| **Parameter** | **Description** | **Required** | **Default Value** | **Minimum Value** | **Maximum Value** |
-|---------------|-----------------|--------------|-------------------|-------------------|-------------------|
-| `clientId`    | The unique identifier for the subscriber. If not provided, a default value is generated. | No           | `rivulex:{group}:sub:{Date.now()}` | - | - |
-| `group`       | The group name for the subscriber. Subscribers with the same group name share the workload. | Yes          | -                 | - | - |
-| `timeout`     | The maximum time in milliseconds to wait for an event before retrying. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second) | - |
-| `count`       | The maximum number of events fetched in each request from Redis Stream. | No           | `100`                 | `1` | - |
-| `block`       | The time in milliseconds that the subscriber blocks while waiting for new events. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second)| - |
-| `retries`     | The number of times the subscriber will attempt to process an event before sending it to the dead letter queue. | No           | `3`| `1` | - |
+| **Parameter**   | **Description** | **Required** | **Default Value** | **Minimum Value** | **Maximum Value** |
+|-----------------|-----------------|--------------|-------------------|-------------------|-------------------|
+| `clientId`      | The unique identifier for the subscriber. If not provided, a default value is generated. | No           | `rivulex:{group}:sub:{Date.now()}` | - | - |
+| `group`         | The group name for the subscriber. Subscribers with the same group name share the workload. | Yes          | -                 | - | - |
+| `ackTimeout`    | The maximum time (in milliseconds) to wait for an event before retrying. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second) | - |
+| `processTimeout`| The maximum time (in milliseconds) allowed for the handler to process each event. | No           | `200` ms | `20` ms  | - |
+| `fetchBatchSize`| The maximum number of events fetched in each request from Redis Stream. | No           | `100`                 | `1` | - |
+| `blockTime`     | The time (in milliseconds) that the subscriber blocks while waiting for new events. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second)| - |
+| `retries`       | The number of times the subscriber will attempt to process an event before sending it to the dead letter queue. | No           | `3`| `1` | - |
 
 ### Example Configuration Parameters
 
@@ -121,9 +122,9 @@ When creating a Subscriber instance, you need to provide a configuration object 
 const subscriberConfig: SubscriberConfig = {
     clientId: 'my-subscriber-id',
     group: 'my-group',
-    timeout: 5000, // 5 seconds
-    count: 100,
-    block: 15000, // 15 seconds
+    ackTimeout: 5000, // 5 seconds
+    fetchBatchSize: 100,
+    blockTime: 15000, // 15 seconds
     retries: 5
 };
 ```
@@ -133,9 +134,9 @@ const subscriberConfig: SubscriberConfig = {
 ```typescript
 const config = {
     group: 'my-group',
-    timeout: 60000,
-    count: 20,
-    block: 2000,
+    ackTimeout: 60000,
+    fetchBatchSize: 20,
+    blockTime: 2000,
     retries: 3
 };
 
