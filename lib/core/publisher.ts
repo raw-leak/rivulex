@@ -1,5 +1,5 @@
 import { Formatter } from "../utils/formatter"
-import { Logger, NewEvent, RedisClient, SentEvent } from "../types";
+import { Logger, NewEvent, RedisClient } from "../types";
 import { PublisherConfig, PublishErrorCallback, PublishSuccessCallback } from "../config/publisher.config";
 
 /**
@@ -66,7 +66,7 @@ export class Publisher {
     * Default handler for successful publishing.
     */
     private defaultOnEventPublished<P, H>(id: string, newEvent: NewEvent<P, H>) {
-        this.logger.log(JSON.stringify({ type: "event", status: this.PUBLISHED_STATUS, id, stream: newEvent.channel, action: newEvent.action, headers: newEvent.headers }))
+        this.logger.log(JSON.stringify({ type: "event", status: this.PUBLISHED_STATUS, id, stream: newEvent.channel, action: newEvent.action }))
     };
 
     /**
