@@ -1,30 +1,22 @@
-import { Headers } from "../types";
+import { Headers, NewEvent } from "../types";
 
 /**
  * Callback type for successful event publishing.
  * @template P - The type of the payload.
  * @template H - The type of the headers.
  */
-export type PublishSuccessCallback<P extends Record<any, any>, H extends Record<any, any>> = (
-    data: {
-        id: string;
-        headers: Headers<H>;
-        action: string;
-        payload: P;
-        group: string;
-    }
+export type PublishSuccessCallback<P, H> = (
+    id: string,
+    data: NewEvent,
 ) => void;
 
 /**
  * Callback type for failed event publishing.
  * @template H - The type of the headers.
  */
-export type PublishErrorCallback<H extends Record<any, any>> = (
-    data: {
-        headers: Headers<H>;
-        action: string;
-        error: Error;
-    }
+export type PublishErrorCallback<H> = (
+    data: NewEvent,
+    error: Error
 ) => void;
 
 /**
@@ -49,7 +41,7 @@ export interface PublisherConfig {
     * Callback to be invoked when an event is successfully published.
     * @OPTIONAL
     */
-    onMessagePublished?: PublishSuccessCallback<any, any>;
+    onEventPublished?: PublishSuccessCallback<any, any>;
 
     /**
     * Callback to be invoked when publishing an event fails.

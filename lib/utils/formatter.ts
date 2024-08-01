@@ -1,4 +1,4 @@
-import { BaseEvent, Headers, RawEvent } from "../types";
+import { BaseEvent, Headers, NewEvent, RawEvent, SentEvent } from "../types";
 
 /**
  * The `Formatter` class is responsible for converting events to and from
@@ -20,7 +20,7 @@ export class Formatter {
     * @template P - The type of the payload.
     * @template H - The type of the headers.
     */
-    formatEventForSend<P extends Record<any, any>, H extends Record<any, any>>(action: string, payload: P, headers: H, group: string): Array<string> {
+    formatEventForSend<P extends Record<any, any>, H extends Record<any, any>>(action: string, payload: P, headers: H, group: string): SentEvent {
         return [
             "action", action,
             "payload", JSON.stringify(payload),
@@ -30,6 +30,27 @@ export class Formatter {
                 group: group
             } as Headers<H>),
         ];
+    }
+
+    getSentEvent<P, H>(newEvent: NewEvent): SentEvent {
+        return [
+            "action", newEvent.action,
+            "payload", JSON.stringify(newEvent.payload),
+            "headers", JSON.stringify(newEvent.headers),
+        ];
+    }
+
+    getNewEvent<P, H>(streamName: string, group: string, action: string, payload: P, headers: H): NewEvent<P, H> {
+        return {
+            action,
+            channel: streamName,
+            payload,
+            headers: {
+                ...headers,
+                timestamp: new Date().toISOString(),
+                group: group
+            } as Headers<H>
+        }
     }
 
     /**

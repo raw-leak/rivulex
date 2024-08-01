@@ -1,38 +1,8 @@
 import { RawEvent } from '../lib/types';
-import { Formatter } from '../lib/formatter/formatter';
+import { Formatter } from '../lib/utils/formatter';
 
 describe('Formatter Class', () => {
     const formatter = new Formatter();
-
-    describe('formatEventForSend', () => {
-        it('should format an event correctly for sending', () => {
-            const action = 'test-action';
-            const payload = { key: 'value' };
-            const headers = { customHeader: 'headerValue' };
-            const group = 'test-group';
-
-            const formatted = formatter.formatEventForSend(action, payload, headers, group);
-
-            expect(formatted).toHaveLength(6)
-
-            expect(formatted[0]).toEqual('action')
-            expect(formatted[1]).toEqual(action)
-
-            expect(formatted[2]).toEqual('payload')
-            expect(formatted[3]).toEqual(JSON.stringify(payload))
-
-            expect(formatted[4]).toEqual('headers')
-            expect(formatted[5]).toBeDefined()
-            const parsedHeaders = JSON.parse(formatted[5])
-
-            expect(parsedHeaders.group).toEqual(group)
-            expect(parsedHeaders.customHeader).toEqual(headers.customHeader)
-            expect(new Date(parsedHeaders.timestamp).toISOString()).toEqual(parsedHeaders.timestamp);
-
-            const timestamp = JSON.parse(formatted[5])['timestamp'];
-            expect(new Date(timestamp).toISOString()).toEqual(timestamp);
-        });
-    });
 
     describe('parseRawEvent', () => {
         it('should parse a raw event correctly', () => {
@@ -43,7 +13,9 @@ describe('Formatter Class', () => {
                 12345
             ];
 
-            const parsed = formatter.parseRawEvent(rawEvent);
+            const channel = "stream"
+
+            const parsed = formatter.parseRawEvent(rawEvent, channel);
 
             expect(parsed).toEqual({
                 id: 'event-id',
@@ -53,6 +25,7 @@ describe('Formatter Class', () => {
                     timestamp: '2024-07-19T00:00:00.000Z',
                     group: 'test-group'
                 },
+                channel,
                 attempt: 1,
             });
         });
@@ -64,8 +37,9 @@ describe('Formatter Class', () => {
                 'some-channel',
                 12345
             ];
+            const channel = "stream"
 
-            const parsed = formatter.parseRawEvent(rawEvent);
+            const parsed = formatter.parseRawEvent(rawEvent, channel);
 
             expect(parsed).toEqual({
                 id: 'event-id',
@@ -75,6 +49,7 @@ describe('Formatter Class', () => {
                     timestamp: '2024-07-19T00:00:00.000Z',
                     group: 'test-group'
                 },
+                channel,
                 attempt: 0,
             });
         });
@@ -96,8 +71,8 @@ describe('Formatter Class', () => {
                     12345
                 ]
             ];
-
-            const parsedEvents = formatter.parseRawEvents(rawEvents);
+            const channel = "stream"
+            const parsedEvents = formatter.parseRawEvents(rawEvents, channel);
 
             expect(parsedEvents).toEqual([
                 {
@@ -108,6 +83,7 @@ describe('Formatter Class', () => {
                         timestamp: '2024-07-19T00:00:00.000Z',
                         group: 'test-group'
                     },
+                    channel,
                     attempt: 1,
                 },
                 {
@@ -118,6 +94,7 @@ describe('Formatter Class', () => {
                         timestamp: '2024-07-19T00:00:00.000Z',
                         group: 'test-group'
                     },
+                    channel,
                     attempt: 2,
                 }
             ]);

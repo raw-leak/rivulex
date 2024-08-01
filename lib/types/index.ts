@@ -9,15 +9,15 @@ export type RedisClient = Redis
 
 export type RedisConfig = RedisOptions
 
+export type SentEvent = ["action", string, "payload", string, "headers", string] | ["action", string, "payload", string, "headers", string, "attempt", number]
+
 /**
  * Represents the raw event structure from Redis.
  * It can be one of two formats:
  * 1. Without attempt: `[id, ["action", actionName, "payload", payloadJson, "headers", headersJson], streamName, timestamp]`
  * 2. With attempt: `[id, ["action", actionName, "payload", payloadJson, "headers", headersJson, "attempt", attemptNumber], streamName, timestamp]`
  */
-export type RawEvent =
-    | [string, ["action", string, "payload", string, "headers", string], string, number]
-    | [string, ["action", string, "payload", string, "headers", string, "attempt", number], string, number];
+export type RawEvent = [string, SentEvent, string, number]
 
 /**
 * Represents an event that is pending in Redis.
@@ -25,17 +25,8 @@ export type RawEvent =
 */
 export type PendingEvent = [string, string, string, number];
 
-/**
- * Represents an event with type parameters for payload and headers.
- * @template P - The type of the payload.
- * @template H - The type of the headers.
- */
-export interface BaseEvent<P = any, H = any> {
-    /**
-     * Unique identifier for the event.
-     */
-    id: string;
 
+export interface NewEvent<P = any, H = any> {
     /**
      * The action associated with the event.
      */
@@ -47,11 +38,6 @@ export interface BaseEvent<P = any, H = any> {
     channel: string;
 
     /**
-     * The number of times the event has been attempted.
-     */
-    attempt: number;
-
-    /**
      * The headers associated with the event.
      */
     headers: Headers<H>;
@@ -60,6 +46,24 @@ export interface BaseEvent<P = any, H = any> {
      * The payload of the event.
      */
     payload: P;
+}
+
+
+/**
+ * Represents an event with type parameters for payload and headers.
+ * @template P - The type of the payload.
+ * @template H - The type of the headers.
+ */
+export interface BaseEvent<P = any, H = any> extends NewEvent<P, H> {
+    /**
+     * Unique identifier for the event.
+     */
+    id: string;
+
+    /**
+    * The number of times the event has been attempted.
+    */
+    attempt: number;
 }
 
 /**

@@ -130,9 +130,10 @@ export class Processor {
       } as Headers;
 
       const pipeline = this.redis.pipeline();
-      const eventArgs = this.formatter.formatEventForSend(baseEvent.action, baseEvent.payload, rejectedHeaders, this.group);
+      const newEvent = this.formatter.getNewEvent(streamName, this.group, baseEvent.action, baseEvent.payload, rejectedHeaders);
+      const newEventArgs = this.formatter.getSentEvent(newEvent);
 
-      pipeline.xadd(this.DEAD_LETTER, '*', ...eventArgs);
+      pipeline.xadd(this.DEAD_LETTER, '*', ...newEventArgs);
       pipeline.xack(streamName, this.group, baseEvent.id);
 
       await this.retrier.retry(() => pipeline.exec())
