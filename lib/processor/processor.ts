@@ -41,6 +41,7 @@ export class Processor {
 
   readonly DEAD_LETTER = 'dead_letter';
 
+  private readonly TIMEOUT_FAILED_STATUS = "TIMEOUT_FAILED"
   private readonly UNCONTROLLED_FAILED_STATUS = "UNCONTROLLED_FAILED"
 
   private readonly CONFIRMED_STATUS = "CONFIRMED"
@@ -170,7 +171,13 @@ export class Processor {
       .withConcurrency(this.processConcurrency)
       .withTaskTimeout(this.processTimeout)
       .for<BaseEvent>(baseEvents)
-      .handleError((error, baseEvent) => this.log(this.UNCONTROLLED_FAILED_STATUS, streamName, baseEvent, error as Error))
+      .handleError((error, baseEvent) => {
+        if (error.name == "PromisePoolError") {
+          this.log(this.TIMEOUT_FAILED_STATUS, streamName, baseEvent)
+        } else {
+          this.log(this.UNCONTROLLED_FAILED_STATUS, streamName, baseEvent, error as Error)
+        }
+      })
       .process((baseEvent) => this.processUnit(streamName, baseEvent, actionHandlers))
   }
 
