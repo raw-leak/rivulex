@@ -39,6 +39,17 @@ export interface SubscriberConfig {
     */
     processTimeout?: number;
 
+
+    /**
+    * The maximum number of events to process concurrently at a time.
+    * Set this value to a positive integer to enable concurrent processing.
+    * Set it to 1 to process events serially.
+    * @OPTIONAL
+    * @default 100
+    * @minimum 1
+    */
+    processConcurrency?: number;
+
     /**
     * The maximum number of events to fetch from Redis in each request.
     * @OPTIONAL

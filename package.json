@@ -46,6 +46,7 @@
         "test": "jest --runInBand"
     },
     "dependencies": {
+        "@supercharge/promise-pool": "^3.2.0",
         "ioredis": "5.4.1",
         "p-limit": "6.1.0"
     },

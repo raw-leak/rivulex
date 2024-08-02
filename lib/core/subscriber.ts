@@ -61,6 +61,11 @@ export class Subscriber {
   private defFetchBatchSize = 100;
   private minFetchBatchSize = 1;
 
+  /** @type {SubscriberConfig['processConcurrency']} */
+  private processConcurrency: number;
+  private defProcessConcurrency = 100;
+  private minProcessConcurrency = 1;
+
   /** @type {SubscriberConfig['retries']} */
   private retries: number;
   private defRetries = 3;
@@ -80,7 +85,7 @@ export class Subscriber {
   * @throws {Error} - Throws an error if the Redis client or group is missing from the configuration.
   */
   constructor(config: SubscriberConfig, redis: RedisClient, logger: Logger) {
-    const { clientId, group, processTimeout, ackTimeout, fetchBatchSize, retries, blockTime } = config;
+    const { clientId, group, processTimeout, ackTimeout, fetchBatchSize, processConcurrency, retries, blockTime } = config;
 
     if (!redis) throw new Error('Missing required "redis" parameter');
     if (!group) throw new Error('Missing required "group" parameter');
@@ -97,6 +102,7 @@ export class Subscriber {
     this.ackTimeout = setDefaultMinMax(ackTimeout, this.defAckTimeout, this.minAckTimeout)
     this.processTimeout = setDefaultMinMax(processTimeout, this.defProcessTimeout, this.minProcessTimeout)
     this.fetchBatchSize = setDefaultMinMax(fetchBatchSize, this.defFetchBatchSize, this.minFetchBatchSize);
+    this.processConcurrency = setDefaultMinMax(processConcurrency, this.defProcessConcurrency, this.minProcessConcurrency);
   }
 
   /**
@@ -221,6 +227,7 @@ export class Subscriber {
         group: this.group,
         retries: this.retries,
         processTimeout: this.processTimeout,
+        processConcurrency: this.processConcurrency,
       }, this.redis, this.logger);
 
       this.liveConsumer = new LiveConsumer({

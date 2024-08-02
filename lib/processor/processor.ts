@@ -1,3 +1,5 @@
+import { PromisePool } from '@supercharge/promise-pool'
+
 import { Retrier } from "../utils/retrier";
 import { Formatter } from "../utils/formatter";
 import { Event, Ack, RedisClient, Handler, Logger, BaseEvent } from "../types";
@@ -16,6 +18,9 @@ export interface ProcessorConfig {
   /** @type {SubscriberConfig['processTimeout']} */
   processTimeout: number;
 
+  /** @type {SubscriberConfig['processConcurrency']} */
+  processConcurrency: number;
+
 }
 
 /**
@@ -27,6 +32,7 @@ export class Processor {
   private retries: number;
   private group: string;
   private processTimeout: number
+  private processConcurrency: number
 
   private retrier: Retrier;
   private logger: Logger;
@@ -34,6 +40,8 @@ export class Processor {
   private redis: RedisClient;
 
   readonly DEAD_LETTER = 'dead_letter';
+
+  private readonly UNCONTROLLED_FAILED_STATUS = "UNCONTROLLED_FAILED"
 
   private readonly CONFIRMED_STATUS = "CONFIRMED"
   private readonly CONFIRMED_FAILED_STATUS = "CONFIRMED_FAILED"
@@ -59,11 +67,12 @@ export class Processor {
   * @param {Console} logger - The logger for logging information and errors.
   */
   constructor(config: ProcessorConfig, redis: RedisClient, logger: Logger) {
-    const { group, retries, processTimeout } = config
+    const { group, retries, processTimeout, processConcurrency } = config
 
     this.group = group;
     this.retries = retries;
     this.processTimeout = processTimeout;
+    this.processConcurrency = processConcurrency;
 
     this.redis = redis;
     this.logger = logger;
@@ -113,7 +122,6 @@ export class Processor {
     }
   }
 
-
   /**
   * Rejects an event by moving it to the dead-letter stream and acknowledging it.
   * 
@@ -150,17 +158,6 @@ export class Processor {
     return baseEvent as Event<P, H>;
   }
 
-  private async withTimeout(promise: Promise<void[]>, timeout: number) {
-    const signal = AbortSignal.timeout(timeout);
-
-    return Promise.race([
-      promise,
-      new Promise((_, reject) => {
-        signal.addEventListener('abort', () => reject(new Error('Promise timed out')));
-      })
-    ]);
-  }
-
   /**
   * Processes a batch of events from a Redis stream.
   * 
@@ -169,13 +166,12 @@ export class Processor {
   * @param {Record<string, Handler>} actionHandlers - The handlers for processing events based on action.
   */
   async process(streamName: string, baseEvents: Array<BaseEvent>, actionHandlers: Record<string, Handler>) {
-    const tasks = baseEvents.map((baseEvent) => this.processUnit(streamName, baseEvent, actionHandlers))
-
-
-    await this.withTimeout(Promise.all(tasks), this.processTimeout)
-      .catch(error => {
-        this.logger.error(`processing failed with error: ${error}`);
-      });
+    await PromisePool
+      .withConcurrency(this.processConcurrency)
+      .withTaskTimeout(this.processTimeout)
+      .for<BaseEvent>(baseEvents)
+      .handleError((error, baseEvent) => this.log(this.UNCONTROLLED_FAILED_STATUS, streamName, baseEvent, error as Error))
+      .process((baseEvent) => this.processUnit(streamName, baseEvent, actionHandlers))
   }
 
 

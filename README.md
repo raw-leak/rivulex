@@ -106,15 +106,16 @@ The `Subscriber` class listens to Redis streams and processes events. It support
 
 When creating a Subscriber instance, you need to provide a configuration object with the following parameters:
 
-| **Parameter**   | **Description** | **Required** | **Default Value** | **Minimum Value** | **Maximum Value** |
-|-----------------|-----------------|--------------|-------------------|-------------------|-------------------|
-| `clientId`      | The unique identifier for the subscriber. If not provided, a default value is generated. | No           | `rivulex:{group}:sub:{Date.now()}` | - | - |
-| `group`         | The group name for the subscriber. Subscribers with the same group name share the workload. | Yes          | -                 | - | - |
-| `ackTimeout`    | The maximum time (in milliseconds) to wait for an event before retrying. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second) | - |
-| `processTimeout`| The maximum time (in milliseconds) allowed for the handler to process each event. | No           | `200` ms | `20` ms  | - |
-| `fetchBatchSize`| The maximum number of events fetched in each request from Redis Stream. | No           | `100`                 | `1` | - |
-| `blockTime`     | The time (in milliseconds) that the subscriber blocks while waiting for new events. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second)| - |
-| `retries`       | The number of times the subscriber will attempt to process an event before sending it to the dead letter queue. | No           | `3`| `1` | - |
+| **Parameter**       | **Description** | **Required** | **Default Value** | **Minimum Value** | **Maximum Value** |
+|---------------------|-----------------|--------------|-------------------|-------------------|-------------------|
+| `clientId`          | The unique identifier for the subscriber. If not provided, a default value is generated. | No           | `rivulex:{group}:sub:{Date.now()}` | - | - |
+| `group`             | The group name for the subscriber. Subscribers with the same group name share the workload. | Yes          | -                 | - | - |
+| `ackTimeout`        | The maximum time (in milliseconds) to wait for an event before retrying. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second) | - |
+| `processTimeout`    | The maximum time (in milliseconds) allowed for the handler to process each event. | No           | `200` ms | `20` ms  | - |
+| `processConcurrency`| The maximum number of events to process concurrently at a time. | No           | `100` | `1`  | - |
+| `fetchBatchSize`    | The maximum number of events fetched in each request from Redis Stream. | No           | `100`                 | `1` | - |
+| `blockTime`         | The time (in milliseconds) that the subscriber blocks while waiting for new events. | No           | `30_000` ms (30 seconds) | `1_000` ms (1 second)| - |
+| `retries`           | The number of times the subscriber will attempt to process an event before sending it to the dead letter queue. | No           | `3`| `1` | - |
 
 ### Example Configuration Parameters
 
