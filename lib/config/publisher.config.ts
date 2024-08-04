@@ -1,4 +1,5 @@
 import { Headers, NewEvent } from "../types";
+import { TrimmerConfig } from "./trimmer.config";
 
 /**
  * Callback type for successful event publishing.
@@ -48,4 +49,11 @@ export interface PublisherConfig {
     * @OPTIONAL
     */
     onPublishFailed?: PublishErrorCallback<any>;
+
+    /**
+     * Configuration for the Trimmer.
+     * @OPTIONAL
+     * If provided, the Publisher will initialize a Trimmer to manage trimming old events from the Redis stream.
+     */
+    trimmer?: TrimmerConfig
 }

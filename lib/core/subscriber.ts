@@ -1,3 +1,4 @@
+import { Trimmer } from './trimmer';
 import { Channel } from '../channel/channel';
 import { SubscriberConfig } from '../config/subscriber.config';
 import { FailedConsumer } from '../consumers/failed.consumer';
@@ -15,6 +16,7 @@ import { setDefaultMinMax } from '../utils';
 export class Subscriber {
   private logger: Logger;
   private redis: RedisClient;
+  private trimmer: Trimmer | null;
 
   /**
   * The consumer for handling live events.
@@ -103,6 +105,10 @@ export class Subscriber {
     this.processTimeout = setDefaultMinMax(processTimeout, this.defProcessTimeout, this.minProcessTimeout)
     this.fetchBatchSize = setDefaultMinMax(fetchBatchSize, this.defFetchBatchSize, this.minFetchBatchSize);
     this.processConcurrency = setDefaultMinMax(processConcurrency, this.defProcessConcurrency, this.minProcessConcurrency);
+
+    if (config.trimmer) {
+      this.trimmer = new Trimmer(config.trimmer, this.redis, this.logger)
+    }
   }
 
   /**
@@ -266,6 +272,10 @@ export class Subscriber {
   async stop() {
     if (this.enabled) {
       await Promise.all([this.liveConsumer.stop(), this.failedConsumer.stop()])
+      if (this.trimmer) {
+        this.trimmer.stop()
+        this.trimmer = null;
+      }
       this.enabled = false
     }
   }

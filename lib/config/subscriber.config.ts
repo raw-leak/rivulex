@@ -1,3 +1,5 @@
+import { TrimmerConfig } from "./trimmer.config";
+
 export interface SubscriberConfig {
     /**
     * The unique identifier for the subscriber.
@@ -106,4 +108,11 @@ export interface SubscriberConfig {
     * @minimum 1
     */
     retries?: number;
+
+    /**
+    * Configuration for the Trimmer.
+    * @OPTIONAL
+    * If provided, the Publisher will initialize a Trimmer to manage trimming old events from the Redis stream.
+    */
+    trimmer?: TrimmerConfig
 }

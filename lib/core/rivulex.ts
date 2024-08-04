@@ -1,9 +1,12 @@
 import { Logger } from "../types";
 import { Redis } from "../redis/redis";
+
 import { Publisher } from "../core/publisher";
 import { Subscriber } from "../core/subscriber";
-import { RivulexSubscriberConfig } from "../config/rivulex.config";
-import { RivulexPublisherConfig } from "../config/rivulex.config";
+import { Trimmer } from "../core/trimmer";
+
+import { RivulexSubscriberConfig, RivulexPublisherConfig, RivulexTrimmerConfig } from "../config/rivulex.config";
+
 
 /**
  * The `Rivulex` class provides a factory for creating instances of `Publisher` and `Subscriber`.
@@ -37,5 +40,19 @@ export class Rivulex {
     static subscriber(config: RivulexSubscriberConfig, logger: Logger = console): Subscriber {
         const redis = Redis.connect(config.redis);
         return new Subscriber(config, redis, logger);
+    }
+
+    /**
+    * Creates a new instance of the `Trimmer` class.
+    * Uses the provided configuration to initialize the `Trimmer`.
+    * Optionally, a custom logger can be provided for logging purposes.
+    * @param {RivulexTrimmerConfig} config - The configuration object for the `Trimmer`.
+    * @param {Console} [logger=console] - An optional logger instance to handle log messages.
+    * @returns {Trimmer} - A new instance of the `Trimmer` class.
+    * @throws {Error} - Throws an error if the configuration is invalid or missing required fields.
+    */
+    static trimmer(config: RivulexTrimmerConfig, logger: Console = console): Trimmer {
+        const redis = Redis.connect(config.redis);
+        return new Trimmer(config, redis, logger);
     }
 }

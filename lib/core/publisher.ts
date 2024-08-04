@@ -1,6 +1,7 @@
 import { Formatter } from "../utils/formatter"
 import { Logger, NewEvent, RedisClient } from "../types";
 import { PublisherConfig, PublishErrorCallback, PublishSuccessCallback } from "../config/publisher.config";
+import { Trimmer } from "./trimmer";
 
 /**
  * Publisher is a class responsible for publishing events to a Redis stream.
@@ -17,10 +18,6 @@ export class Publisher {
     */
     readonly group: string;
 
-    private redis: RedisClient
-    private formatter: Formatter;
-    private logger: Logger;
-
     /**
     * Optional callback to be invoked when a message is successfully published.
     * Allows developers to implement custom logging or other processing for successful publishes.
@@ -32,6 +29,11 @@ export class Publisher {
     * Allows developers to implement custom error handling or logging for failed publishes.
     */
     private onPublishFailed: PublishErrorCallback<any>;
+
+    private redis: RedisClient
+    private formatter: Formatter;
+    private logger: Logger;
+    private trimmer: Trimmer | null;
 
     private readonly PUBLISHED_STATUS = "PUBLISHED";
     private readonly PUBLISHED_FAILED_STATUS = "PUBLISHED_FAILED";
@@ -60,6 +62,10 @@ export class Publisher {
         this.onPublishFailed = onPublishFailed || this.defaultOnPublishFailed;
 
         this.formatter = new Formatter();
+
+        if (config.trimmer) {
+            this.trimmer = new Trimmer(config.trimmer, this.redis, this.logger)
+        }
     }
 
     /**
@@ -136,5 +142,9 @@ export class Publisher {
 
     async stop(): Promise<void> {
         await this.redis.quit()
+        if (this.trimmer) {
+            this.trimmer.stop()
+            this.trimmer = null;
+        }
     }
 }
