@@ -8,7 +8,7 @@ export { Trimmer } from './core/trimmer';
 export { Channel } from './channel/channel';
 
 // Configurations
-export { RivulexPublisherConfig, RivulexSubscriberConfig } from './config/rivulex.config';
+export { RivulexPublisherConfig, RivulexSubscriberConfig, RivulexTrimmerConfig } from './config/rivulex.config';
 
 // Types
 export { Event, Headers, Ack } from "./types"

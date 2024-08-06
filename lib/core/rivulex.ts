@@ -7,7 +7,6 @@ import { Trimmer } from "../core/trimmer";
 
 import { RivulexSubscriberConfig, RivulexPublisherConfig, RivulexTrimmerConfig } from "../config/rivulex.config";
 
-
 /**
  * The `Rivulex` class provides a factory for creating instances of `Publisher` and `Subscriber`.
  * It handles the initialization of the Redis client and configuration management.
@@ -19,7 +18,7 @@ export class Rivulex {
     * Uses the provided configuration to initialize the `Publisher`.
     * Optionally, a custom logger can be provided for logging purposes.
     * @param {RivulexPublisherConfig} config - The configuration object for the `Publisher`.
-    * @param {Console} [logger=console] - An optional logger instance to handle log messages.
+    * @param {Logger} [logger=console] - An optional logger instance to handle log messages.
     * @returns {Publisher} - A new instance of the `Publisher` class.
     * @throws {Error} - Throws an error if the configuration is invalid or missing required fields.
     */
@@ -33,7 +32,7 @@ export class Rivulex {
     * Uses the provided configuration to initialize the `Subscriber`.
     * Optionally, a custom logger can be provided for logging purposes.
     * @param {RivulexSubscriberConfig} config - The configuration object for the `Subscriber`.
-    * @param {Console} [logger=console] - An optional logger instance to handle log messages.
+    * @param {Logger} [logger=console] - An optional logger instance to handle log messages.
     * @returns {Subscriber} - A new instance of the `Subscriber` class.
     * @throws {Error} - Throws an error if the configuration is invalid or missing required fields.
     */
@@ -47,11 +46,11 @@ export class Rivulex {
     * Uses the provided configuration to initialize the `Trimmer`.
     * Optionally, a custom logger can be provided for logging purposes.
     * @param {RivulexTrimmerConfig} config - The configuration object for the `Trimmer`.
-    * @param {Console} [logger=console] - An optional logger instance to handle log messages.
+    * @param {Logger} [logger=console] - An optional logger instance to handle log messages.
     * @returns {Trimmer} - A new instance of the `Trimmer` class.
     * @throws {Error} - Throws an error if the configuration is invalid or missing required fields.
     */
-    static trimmer(config: RivulexTrimmerConfig, logger: Console = console): Trimmer {
+    static trimmer(config: RivulexTrimmerConfig, logger: Logger = console): Trimmer {
         const redis = Redis.connect(config.redis);
         return new Trimmer(config, redis, logger);
     }
