@@ -1,6 +1,6 @@
 import { Redis } from 'ioredis';
 import { TrimmerConfig } from '../config/trimmer.config';
-import { Logger, RedisClient } from '../types';
+import { Logger, RedisClient } from "../types";
 import { setDefaultMinMax } from '../utils';
 
 /**

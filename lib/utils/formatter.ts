@@ -43,7 +43,7 @@ export class Formatter {
     getNewEvent<P, H>(streamName: string, group: string, action: string, payload: P, headers: H): NewEvent<P, H> {
         return {
             action,
-            channel: streamName,
+            stream: streamName,
             payload,
             headers: {
                 ...headers,
@@ -78,7 +78,7 @@ export class Formatter {
     * @template P - The type of the payload.
     * @template H - The type of the headers.
     */
-    parseRawEvent<P = Record<any, any>, H = Record<any, any>>(rawEvent: RawEvent, channel: string): BaseEvent<P, H> {
+    parseRawEvent<P = Record<any, any>, H = Record<any, any>>(rawEvent: RawEvent, stream: string): BaseEvent<P, H> {
         const [id, [, action, , payload, , headers, , attempt = 0]] = rawEvent;
 
         return {
@@ -87,7 +87,7 @@ export class Formatter {
             payload: JSON.parse(payload),
             headers: JSON.parse(headers),
             attempt,
-            channel,
+            stream,
         } as BaseEvent<P, H>;
     }
 }

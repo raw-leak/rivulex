@@ -1,5 +1,6 @@
 import { Redis, RedisOptions } from "ioredis";
-import { Channel } from "../channel/channel";
+import { Channel } from "./channel/channel";
+import { PUBLISHED_EVENT, PUBLISHED_FAILED_EVENT } from "./constants";
 
 /**
  * Type alias for a Redis client.
@@ -33,9 +34,9 @@ export interface NewEvent<P = any, H = any> {
     action: string;
 
     /**
-     * The channel from which the event was published.
+     * The stream to which the event was published.
      */
-    channel: string;
+    stream: string;
 
     /**
      * The headers associated with the event.
@@ -143,3 +144,5 @@ export interface Logger {
     warn(message: string, ...optionalParams: any[]): void;
     debug(message: string, ...optionalParams: any[]): void;
 }
+
+export type EventTypes = typeof PUBLISHED_EVENT | typeof PUBLISHED_FAILED_EVENT;

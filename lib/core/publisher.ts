@@ -1,7 +1,9 @@
-import { Formatter } from "../utils/formatter"
-import { Logger, NewEvent, RedisClient } from "../types";
-import { PublisherConfig, PublishErrorCallback, PublishSuccessCallback } from "../config/publisher.config";
+import EventEmitter from 'node:events';
 import { Trimmer } from "./trimmer";
+import { Formatter } from "../utils/formatter"
+import { EventTypes, Logger, NewEvent, RedisClient } from "../types";
+import { PUBLISHED_EVENT, PUBLISHED_FAILED_EVENT } from '../constants';
+import { PublisherConfig, PublishFailedLog, PublishFailedPayload, PublishSuccessLog, PublishSuccessPayload } from "../config/publisher.config";
 
 /**
  * Publisher is a class responsible for publishing events to a Redis stream.
@@ -9,9 +11,9 @@ import { Trimmer } from "./trimmer";
  */
 export class Publisher {
     /**
-    * The Redis stream channel to publish events to.
+    * The default Redis stream to publish events to.
     */
-    readonly channel: string;
+    readonly defaultStream: string;
 
     /**
     * The consumer group to associate with the events.
@@ -22,16 +24,17 @@ export class Publisher {
     * Optional callback to be invoked when a message is successfully published.
     * Allows developers to implement custom logging or other processing for successful publishes.
     */
-    private onEventPublished: PublishSuccessCallback<any, any>;
+    private onEventPublishSucceededLog: PublishSuccessLog<any, any>;
 
     /**
     * Optional callback to be invoked when publishing fails.
     * Allows developers to implement custom error handling or logging for failed publishes.
     */
-    private onPublishFailed: PublishErrorCallback<any>;
+    private onEventPublishFailedLog: PublishFailedLog<any, any>;
 
     private redis: RedisClient
     private formatter: Formatter;
+    private eventEmitter: EventEmitter;
     private logger: Logger;
     private trimmer: Trimmer | null;
 
@@ -46,74 +49,118 @@ export class Publisher {
     * @throws {Error} Throws an error if required parameters are missing.
     */
     constructor(config: PublisherConfig, redis: RedisClient, logger: Logger) {
-        const { channel, group, onEventPublished, onPublishFailed } = config
+        const { defaultStream, group, onEventPublishSucceededLog, onEventPublishFailedLog } = config
 
         if (!redis) throw new Error('Missing required "redis" parameter');
-        if (!channel) throw new Error('Missing required "channel" parameter');
+        if (!defaultStream) throw new Error('Missing required "defaultStream" parameter');
         if (!group) throw new Error('Missing required "group" parameter');
 
-        this.channel = channel;
+        this.defaultStream = defaultStream;
         this.group = group;
 
         this.redis = redis;
         this.logger = logger;
 
-        this.onEventPublished = onEventPublished || this.defaultOnEventPublished;
-        this.onPublishFailed = onPublishFailed || this.defaultOnPublishFailed;
+        this.onEventPublishSucceededLog = onEventPublishSucceededLog || this.defaultOnEventPublishSucceededLog;
+        this.onEventPublishFailedLog = onEventPublishFailedLog || this.defaultOnEventPublishFailedLog;
 
         this.formatter = new Formatter();
+        this.eventEmitter = new EventEmitter();
 
         if (config.trimmer) {
             this.trimmer = new Trimmer(config.trimmer, this.redis, this.logger)
         }
     }
 
+    private defaultOnEventPublishSucceededLog<P, H>(id: string, newEvent: NewEvent<P, H>): string {
+        return JSON.stringify({ type: "event", status: this.PUBLISHED_STATUS, id, stream: newEvent.stream, action: newEvent.action, timestamp: Date.now() })
+    };
+
+    private defaultOnEventPublishFailedLog<P, H>(newEvent: NewEvent<P, H>): string {
+        return JSON.stringify({ type: "event", status: this.PUBLISHED_FAILED_STATUS, stream: newEvent.stream, action: newEvent.action, timestamp: Date.now() })
+    };
+
     /**
-    * Default handler for successful publishing.
+    * Handler for successful publishing.
     */
-    private defaultOnEventPublished<P, H>(id: string, newEvent: NewEvent<P, H>) {
-        this.logger.log(JSON.stringify({ type: "event", status: this.PUBLISHED_STATUS, id, stream: newEvent.channel, action: newEvent.action, timestamp: Date.now() }))
+    private onEventPublishSucceeded<P, H>(id: string, newEvent: NewEvent<P, H>) {
+        this.logger.log(this.onEventPublishSucceededLog(id, newEvent))
+        this.eventEmitter.emit('published', id, newEvent);
     };
 
     /**
-     * Default handler for failed publishing.
-     */
-    private defaultOnPublishFailed<P, H>(newEvent: NewEvent<P, H>, error: Error) {
-        this.logger.log(JSON.stringify({ type: "event", status: this.PUBLISHED_FAILED_STATUS, stream: newEvent.channel, action: newEvent.action, timestamp: Date.now() }))
+    * Handler for failed publishing.
+    */
+    private onEventPublishFailed<P, H>(newEvent: NewEvent<P, H>, error: Error) {
+        this.logger.log(this.onEventPublishFailedLog(newEvent, error))
         this.logger.error(JSON.stringify(error))
+        this.eventEmitter.emit('error_published', { newEvent, error });
     };
 
     /**
-     * Publish a single event.
+    * Publish a single event to the default stream.
+    * @param action - The action type of the event.
+    * @param payload - The payload of the event.
+    * @param headers - Optional headers for the event.
+    */
+    publish<P extends Record<any, any>, H extends Record<any, any>>(action: string, payload: P, headers?: H): Promise<string>;
+
+    /**
+     * Publish a single event to a specific stream.
+     * @param stream - The stream to publish the event to.
+     * @param action - The action type of the event.
+     * @param payload - The payload of the event.
+     * @param headers - Optional headers for the event.
      */
-    publish = async <P extends Record<any, any>, H extends Record<any, any>>(action: string, payload: P, headers: H = {} as H): Promise<string> => {
-        const newEvent = this.formatter.getNewEvent<P, H>(this.channel, this.group, action, payload, headers)
-        const newEventArgs = this.formatter.getSentEvent<P, H>(newEvent)
+    publish<P extends Record<any, any>, H extends Record<any, any>>(stream: string, action: string, payload: P, headers?: H): Promise<string>;
+
+    public async publish<P extends Record<any, any>, H extends Record<any, any>>(streamOrAction: string, actionOrPayload: string | P, payloadOrHeaders?: P | H, nothingOrHeaders?: H): Promise<string> {
+        let stream: string;
+        let action: string;
+        let payload: P;
+        let headers: H;
+
+        if (typeof actionOrPayload === 'string') {
+            // Overload: publish(stream, action, payload, headers)
+            stream = streamOrAction;
+            action = actionOrPayload;
+            payload = payloadOrHeaders as P;
+            headers = nothingOrHeaders || {} as H;
+        } else {
+            // Overload: publish(action, payload, headers)
+            stream = this.defaultStream;
+            action = streamOrAction;
+            payload = actionOrPayload as P;
+            headers = payloadOrHeaders || {} as H;
+        }
+
+        const newEvent = this.formatter.getNewEvent<P, H>(stream, this.group, action, payload, headers);
+        const newEventArgs = this.formatter.getSentEvent<P, H>(newEvent);
 
         try {
-            const id = await this.redis.xadd(this.channel, "*", ...newEventArgs) as string;
-            this.onEventPublished(id, newEvent);
+            const id = await this.redis.xadd(stream, "*", ...newEventArgs) as string;
+            this.onEventPublishSucceeded(id, newEvent);
             return id;
         } catch (error) {
-            this.onPublishFailed(newEvent, error as Error)
+            this.onEventPublishFailed(newEvent, error as Error);
             throw error;
         }
-    };
+    }
 
     /**
     * Publish multiple events in a batch.
     */
-    publishBatch = async <P extends Record<any, any>, H extends Record<any, any>>(events: Array<{ action: string, payload: P, headers: H }>): Promise<Array<{ ok: boolean, id?: string, error: Error | null }>> => {
+    publishBatch = async <P extends Record<any, any>, H extends Record<any, any>>(events: Array<{ stream?: string, action: string, payload: P, headers: H }>): Promise<Array<{ ok: boolean, id?: string, error: Error | null }>> => {
         if (!events || !events.length) {
             return []
         }
 
         const pipeline = this.redis.pipeline();
 
-        const newEvents = events.map(({ action, payload, headers }) => {
-            const newEvent = this.formatter.getNewEvent<P, H>(this.channel, this.group, action, payload, headers)
+        const newEvents = events.map(({ stream, action, payload, headers }) => {
+            const newEvent = this.formatter.getNewEvent<P, H>(stream || this.defaultStream, this.group, action, payload, headers)
             const newEventArgs = this.formatter.getSentEvent<P, H>(newEvent)
-            pipeline.xadd(this.channel, "*", ...newEventArgs);
+            pipeline.xadd(stream || this.defaultStream, "*", ...newEventArgs);
 
             return newEvent
         });
@@ -127,18 +174,30 @@ export class Publisher {
 
             results.forEach(([error, id], i) => {
                 if (error) {
-                    this.onPublishFailed(newEvents[i], error);
+                    this.onEventPublishFailed(newEvents[i], error);
                 } else {
-                    this.onEventPublished(id, newEvents[i]);
+                    this.onEventPublishSucceeded(id, newEvents[i]);
                 }
             });
 
             return results.map(([error, id]) => ({ id: id as string, error, ok: error ? false : true }));
         } catch (error) {
-            newEvents.forEach((newEvent) => this.onPublishFailed(newEvent, error as Error));
+            newEvents.forEach((newEvent) => this.onEventPublishFailed(newEvent, error as Error));
             throw error;
         }
     };
+
+
+    /**
+    * Register an event listener for the specified event.
+    * @param event - The event to listen for.
+    * @param listener - The callback function to handle the event.
+    */
+    public on<P, H>(event: typeof PUBLISHED_EVENT, listener: (data: PublishSuccessPayload<P, H>) => void): void;
+    public on<P, H>(event: typeof PUBLISHED_FAILED_EVENT, listener: (data: PublishFailedPayload<P, H>) => void): void;
+    public on(event: EventTypes, listener: (data: any) => void): void {
+        this.eventEmitter.on(event, listener);
+    }
 
     async stop(): Promise<void> {
         await this.redis.quit()

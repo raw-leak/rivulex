@@ -4,7 +4,7 @@ import { SubscriberConfig } from '../config/subscriber.config';
 import { FailedConsumer } from '../consumers/failed.consumer';
 import { LiveConsumer } from '../consumers/live.consumer';
 import { Processor } from '../processor/processor';
-import { ChannelsHandlers, Handler, Logger, RedisClient } from '../types';
+import { ChannelsHandlers, Handler, Logger, RedisClient } from "../types";
 import { setDefaultMinMax } from '../utils';
 
 /**

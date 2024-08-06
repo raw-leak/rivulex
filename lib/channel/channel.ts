@@ -1,4 +1,4 @@
-import { Handler } from "../types/index";
+import { Handler } from "../types";
 
 /**
  * The `Channel` class represents a channel that can hold a collection of handlers 
