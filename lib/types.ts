@@ -1,6 +1,6 @@
 import { Redis, RedisOptions } from "ioredis";
 import { Channel } from "./channel/channel";
-import { PUBLISHED_EVENT, PUBLISHED_FAILED_EVENT } from "./constants";
+import { PUBLISHED_HOOK, FAILED_HOOK } from "./hooks";
 
 /**
  * Type alias for a Redis client.
@@ -145,4 +145,4 @@ export interface Logger {
     debug(message: string, ...optionalParams: any[]): void;
 }
 
-export type EventTypes = typeof PUBLISHED_EVENT | typeof PUBLISHED_FAILED_EVENT;
+export type HookType = typeof PUBLISHED_HOOK | typeof FAILED_HOOK;

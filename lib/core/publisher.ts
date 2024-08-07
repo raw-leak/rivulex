@@ -1,9 +1,9 @@
 import EventEmitter from 'node:events';
 import { Trimmer } from "./trimmer";
 import { Formatter } from "../utils/formatter"
-import { EventTypes, Logger, NewEvent, RedisClient } from "../types";
-import { PUBLISHED_EVENT, PUBLISHED_FAILED_EVENT } from '../constants';
-import { PublisherConfig, PublishFailedLog, PublishFailedPayload, PublishSuccessLog, PublishSuccessPayload } from "../config/publisher.config";
+import { HookType, Logger, NewEvent, RedisClient } from "../types";
+import { PUBLISHED_HOOK, FAILED_HOOK } from '../hooks';
+import { PublisherConfig, PublishFailedLog, PublishSuccessLog, PublishedHookPayload, FailedHookPayload } from "../config/publisher.config";
 
 /**
  * Publisher is a class responsible for publishing events to a Redis stream.
@@ -193,9 +193,9 @@ export class Publisher {
     * @param event - The event to listen for.
     * @param listener - The callback function to handle the event.
     */
-    public on<P, H>(event: typeof PUBLISHED_EVENT, listener: (data: PublishSuccessPayload<P, H>) => void): void;
-    public on<P, H>(event: typeof PUBLISHED_FAILED_EVENT, listener: (data: PublishFailedPayload<P, H>) => void): void;
-    public on(event: EventTypes, listener: (data: any) => void): void {
+    public on<P, H>(event: typeof PUBLISHED_HOOK, listener: (data: PublishedHookPayload<P, H>) => void): void;
+    public on<P, H>(event: typeof FAILED_HOOK, listener: (data: FailedHookPayload<P, H>) => void): void;
+    public on(event: HookType, listener: (data: any) => void): void {
         this.eventEmitter.on(event, listener);
     }
 

@@ -1,9 +1,9 @@
 export interface TrimmerConfig {
     /**
-    * The Redis stream channel to trimmer events off.
+    * The Redis streams to trimmer events off.
     * @REQUIRED
     */
-    channels: string[];
+    streams: string[];
 
     /**
     * The consumer group to associate with the trimmer.

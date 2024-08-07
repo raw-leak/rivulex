@@ -22,8 +22,8 @@ export interface TrimmingInfo {
  */
 export class Trimmer {
 
-    /** @type {TrimmerConfig['channels']} */
-    private channels: string[];
+    /** @type {TrimmerConfig['streams']} */
+    private streams: string[];
 
     /** @type {TrimmerConfig['group']} */
     private group: string;
@@ -62,13 +62,13 @@ export class Trimmer {
      * Default values are used for optional parameters if they are not provided in the configuration.
      */
     constructor(config: TrimmerConfig, redis: RedisClient, logger: Logger) {
-        const { channels, clientId, group, intervalTime, retentionPeriod } = config
+        const { streams, clientId, group, intervalTime, retentionPeriod } = config
 
         this.redis = redis;
         this.logger = logger;
 
         this.group = group;
-        this.channels = channels;
+        this.streams = streams;
         this.clientId = clientId || `rivulex:${group}:trimmer:${Date.now()}`;
 
         this.intervalTime = setDefaultMinMax(intervalTime, this.defIntervalTime, this.minIntervalTime)
@@ -166,7 +166,7 @@ export class Trimmer {
     * @returns {Promise<void>} - A promise that resolves when the trimming process is complete.
     */
     private async trim() {
-        await Promise.allSettled(this.channels.map(async channel => {
+        await Promise.allSettled(this.streams.map(async channel => {
             try {
                 if (await this.shouldTrim(channel)) {
                     await this.trimStream(channel);

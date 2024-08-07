@@ -26,9 +26,9 @@ export type PublishFailedLog<P, H> = (
 * @template P - The type of the payload.
 * @template H - The type of the headers.
 */
-export type PublishSuccessPayload<P, H> = (
+export type PublishedHookPayload<P, H> = (
     id: string,
-    data: NewEvent,
+    event: NewEvent,
 ) => void;
 
 /**
@@ -36,8 +36,8 @@ export type PublishSuccessPayload<P, H> = (
 * @template P - The type of the payload.
 * @template H - The type of the headers.
 */
-export type PublishFailedPayload<P, H> = (
-    data: NewEvent<P, H>,
+export type FailedHookPayload<P, H> = (
+    event: NewEvent<P, H>,
     error: Error
 ) => void;
 
