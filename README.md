@@ -357,19 +357,19 @@ In this example, the `Trimmer` is configured as part of the `Subscriber` configu
 
 </details>
 
-### Hooks
+## Hooks
 
 The Publisher emits internal events that can be handled using hooks. These hooks allow you to execute custom logic when specific internal events occur, such as when an event is successfully published or when an event publishing attempt fails.
 
 <details>
 <summary>Read more on Hooks</summary>
 
-#### Supported Hooks
+### Supported Hooks
 
 - `published`: Triggered when an event is successfully published. The hook receives an object containing the event ID and event data.
 - `failed`: Triggered when an event publishing attempt fails. The hook receives an object containing the event data and the error.
 
-#### Hook Data Types
+### Hook Data Types
 - `PublishedHookPayload<P, H>`: The data received by the hook for the `published` hook.
     - `id: string`: The unique identifier of the successfully published event.
     - `event: NewEvent<P, H>`: The event details including stream, group, action, payload, and headers.
@@ -377,7 +377,7 @@ The Publisher emits internal events that can be handled using hooks. These hooks
     - `event: NewEvent<P, H>`: The event details that were attempted to be published, including stream, group, action, payload, and headers.
     - `error: Error`: The error that caused the publishing attempt to fail.
 
-#### Example
+### Example
 ```js
 import { Rivulex } from 'rivulex';
 
