@@ -6,7 +6,11 @@
 ![Last Tag](https://img.shields.io/github/v/tag/raw-leak/rivulex?label=Last%20Tag)
 ![Version](https://img.shields.io/github/v/release/raw-leak/rivulex)
 ![Contributors](https://img.shields.io/github/contributors/raw-leak/rivulex)
-![Version](https://img.shields.io/npm/v/nestjs-rivulex)
+![Size](https://img.shields.io/github/repo-size/raw-leak/rivulex)
+![GitHub last commit](https://img.shields.io/github/last-commit/raw-leak/rivulex)
+![Maintenance](https://img.shields.io/maintenance/yes/2024)
+[![npm](https://img.shields.io/npm/v/rivulex.svg)](https://www.npmjs.com/package/rivulex)
+![Coverage](https://img.shields.io/codecov/c/github/raw-leak/rivulex)
 
 </div>
 
