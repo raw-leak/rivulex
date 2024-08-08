@@ -117,7 +117,7 @@ export class Trimmer {
             group: this.group,
         };
 
-        await this.redis.set(this.getStreamTrimKey(streamName), JSON.stringify(trimmingInfo), 'EX', this.intervalTime);
+        await this.redis.set(this.getStreamTrimKey(streamName), JSON.stringify(trimmingInfo), 'EX', this.intervalTime / 1000);
     }
 
     /**
@@ -145,8 +145,8 @@ export class Trimmer {
      * @returns {number} - The random interval time in milliseconds.
      */
     private getRandomInterval(): number {
-        const randomOffset = Math.floor(Math.random() * 60) - 30; // Generate a random number between -30 and 30
-        return (this.intervalTime + randomOffset) * 1000; // Convert to milliseconds
+        const randomOffset = (Math.floor(Math.random() * 60) - 30) * 1000; // Generate a random number between -30 and 30
+        return (this.intervalTime + randomOffset); // Convert to milliseconds
     }
 
     /**
