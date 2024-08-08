@@ -9,9 +9,11 @@ const createGroup = jest.fn((...args) => {
 
 const initLiveConsumer = jest.fn();
 const consumeLiveConsumer = jest.fn();
-
 const initFailedConsumer = jest.fn();
 const consumeFailedConsumer = jest.fn();
+const initProcessor = jest.fn();
+const initTrimmer = jest.fn();
+const startTrimmer = jest.fn();
 
 class MockLiveConsumer {
     constructor(...args) {
@@ -33,6 +35,22 @@ class MockFailedConsumer {
     }
 }
 
+class MockProcessor {
+    constructor(...args) {
+        initProcessor(...args);
+    }
+}
+
+class MockTrimmer {
+    constructor(...args) {
+        initTrimmer(...args);
+    }
+
+    start(...args) {
+        startTrimmer(...args);
+    }
+}
+
 // Mock the actual modules after defining mock classes
 jest.mock('../../lib/consumers/live.consumer', () => ({
     LiveConsumer: MockLiveConsumer
@@ -40,6 +58,14 @@ jest.mock('../../lib/consumers/live.consumer', () => ({
 
 jest.mock('../../lib/consumers/failed.consumer', () => ({
     FailedConsumer: MockFailedConsumer
+}));
+
+jest.mock('../../lib/processor/processor', () => ({
+    Processor: MockProcessor
+}));
+
+jest.mock('../../lib/core/trimmer', () => ({
+    Trimmer: MockTrimmer
 }));
 
 import { Subscriber } from '../../lib/core/subscriber';
@@ -59,17 +85,38 @@ describe('Subscriber Unit Tests with Mock Classes', () => {
         mockLogger = {
             log: jest.fn(),
             error: jest.fn(),
+            debug: jest.fn(),
         } as any;
 
         subscriber = new Subscriber({
             clientId: 'test-client-id',
             group: 'test-group',
-            timeout: 10000,
-            count: 50,
+            ackTimeout: 10000,
+            fetchBatchSize: 50,
             retries: 5,
-            block: 60000,
+            blockTime: 60000,
+            processTimeout: 333,
+            processConcurrency: 123,
+            trimmer: {
+                clientId: 'test-client-id',
+                group: 'trimmer-test-group',
+                streams: [],
+                retentionPeriod: 555,
+                intervalTime: 666
+            }
         }, mockRedisClient, mockLogger);
     });
+
+    afterEach(() => {
+        initLiveConsumer.mockClear()
+        consumeLiveConsumer.mockClear()
+        initFailedConsumer.mockClear()
+        consumeFailedConsumer.mockClear()
+        initProcessor.mockClear()
+        initTrimmer.mockClear()
+        startTrimmer.mockClear()
+        createGroup.mockClear()
+    })
 
     describe('stream method', () => {
         it('should return a Channel instance for a given stream name', () => {
@@ -105,46 +152,87 @@ describe('Subscriber Unit Tests with Mock Classes', () => {
     });
 
     describe('listen method', () => {
-        it('should initialize LiveConsumer and FailedConsumer with correct arguments', async () => {
-            await subscriber.listen();
+        let stream;
 
-            // live
+        beforeEach(async () => {
+            stream = "tes-stream-listem"
+            subscriber.stream(stream).action("test-action", () => { })
+            await subscriber.listen();
+        })
+
+        it('should initialize LiveConsumer with right parameters', async () => {
             expect(initLiveConsumer).toHaveBeenCalledTimes(1)
             let [params, redisClient, logger] = initLiveConsumer.mock.calls[0]
 
             expect(params).toEqual({
                 clientId: 'test-client-id',
-                channels: [...subscriber['channelsHandlers'].keys()],
+                streams: [stream],
                 group: 'test-group',
-                retries: 5,
-                block: 60000,
-                count: 50
+                blockTime: 60000,
+                fetchBatchSize: 50
             });
             expect(redisClient).toBeDefined()
             expect(logger).toBeDefined()
-            expect(consumeLiveConsumer).toHaveBeenCalledWith(subscriber['channelsHandlers']);
+        });
 
-            // failed
+        it('should start consuming FailedConsumer', async () => {
+            expect(consumeFailedConsumer).toHaveBeenCalled();
+        });
+
+        it('should initialize FailedConsumer with right parameters', async () => {
             expect(initFailedConsumer).toHaveBeenCalledTimes(1)
-            let [_params, _redisClient, _logger] = initFailedConsumer.mock.calls[0]
+            let [params, redisClient, logger] = initFailedConsumer.mock.calls[0]
 
-            expect(_params).toEqual({
+            expect(params).toEqual({
                 clientId: 'test-client-id',
-                channels: [...subscriber['channelsHandlers'].keys()],
+                streams: [stream],
                 group: 'test-group',
-                timeout: 10000,
-                retries: 5,
-                count: 50
+                ackTimeout: 10000,
+                fetchBatchSize: 50
             });
-            expect(_redisClient).toBeDefined()
-            expect(_logger).toBeDefined()
-            expect(consumeFailedConsumer).toHaveBeenCalledWith(subscriber['channelsHandlers']);
+            expect(redisClient).toBeDefined()
+            expect(logger).toBeDefined()
+        });
+
+        it('should start consuming LiveConsumer', async () => {
+            expect(consumeLiveConsumer).toHaveBeenCalledTimes(1)
+        });
+
+        it('should initialize Processor with right arguments', async () => {
+            expect(initProcessor).toHaveBeenCalledTimes(1)
+            let [params, redisClient, logger] = initProcessor.mock.calls[0]
+
+            expect(params).toEqual({
+                group: 'test-group',
+                retries: 5,
+                processTimeout: 333,
+                processConcurrency: 123
+            });
+            expect(redisClient).toBeDefined()
+            expect(logger).toBeDefined()
+        });
+
+        it('should initialize Trimmer with right arguments', async () => {
+            expect(initTrimmer).toHaveBeenCalledTimes(1)
+            let [params, redisClient, logger] = initTrimmer.mock.calls[0]
+
+            expect(params).toEqual({
+                clientId: 'test-client-id',
+                group: 'trimmer-test-group',
+                streams: [],
+                retentionPeriod: 555,
+                intervalTime: 666
+            });
+            expect(redisClient).toBeDefined()
+            expect(logger).toBeDefined()
+        });
+
+        it('should start Trimmer', async () => {
+            expect(startTrimmer).toHaveBeenCalledTimes(1)
         });
 
         it('should call createGroup to set up the Redis groups', async () => {
-            const createGroupSpy = jest.spyOn(subscriber as any, 'createGroup');
-            await subscriber.listen();
-            expect(createGroupSpy).toHaveBeenCalled();
+            expect(createGroup).toHaveBeenCalledTimes(1)
         });
     });
 });
