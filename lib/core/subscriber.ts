@@ -258,6 +258,10 @@ export class Subscriber {
       this.failedConsumer.consume(this.channelsHandlers)
 
       this.enabled = true
+
+      if (this.trimmer) {
+        await this.trimmer.start()
+      }
     }
   }
 
