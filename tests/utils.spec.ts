@@ -13,9 +13,9 @@ describe('Formatter Class', () => {
                 12345
             ];
 
-            const channel = "stream"
+            const stream = "stream"
 
-            const parsed = formatter.parseRawEvent(rawEvent, channel);
+            const parsed = formatter.parseRawEvent(rawEvent, stream);
 
             expect(parsed).toEqual({
                 id: 'event-id',
@@ -25,7 +25,7 @@ describe('Formatter Class', () => {
                     timestamp: '2024-07-19T00:00:00.000Z',
                     group: 'test-group'
                 },
-                channel,
+                stream,
                 attempt: 1,
             });
         });
@@ -37,9 +37,9 @@ describe('Formatter Class', () => {
                 'some-channel',
                 12345
             ];
-            const channel = "stream"
+            const stream = "stream"
 
-            const parsed = formatter.parseRawEvent(rawEvent, channel);
+            const parsed = formatter.parseRawEvent(rawEvent, stream);
 
             expect(parsed).toEqual({
                 id: 'event-id',
@@ -49,7 +49,7 @@ describe('Formatter Class', () => {
                     timestamp: '2024-07-19T00:00:00.000Z',
                     group: 'test-group'
                 },
-                channel,
+                stream,
                 attempt: 0,
             });
         });
@@ -71,8 +71,8 @@ describe('Formatter Class', () => {
                     12345
                 ]
             ];
-            const channel = "stream"
-            const parsedEvents = formatter.parseRawEvents(rawEvents, channel);
+            const stream = "stream"
+            const parsedEvents = formatter.parseRawEvents(rawEvents, stream);
 
             expect(parsedEvents).toEqual([
                 {
@@ -83,7 +83,7 @@ describe('Formatter Class', () => {
                         timestamp: '2024-07-19T00:00:00.000Z',
                         group: 'test-group'
                     },
-                    channel,
+                    stream,
                     attempt: 1,
                 },
                 {
@@ -94,7 +94,7 @@ describe('Formatter Class', () => {
                         timestamp: '2024-07-19T00:00:00.000Z',
                         group: 'test-group'
                     },
-                    channel,
+                    stream,
                     attempt: 2,
                 }
             ]);
