@@ -58,8 +58,6 @@ export class Processor {
   private readonly RETRY = 3
   private readonly RETRY_BACKOFF_TIME = 50
 
-
-
   /**
   * Creates a new `Processor` instance.
   * 
@@ -208,10 +206,9 @@ export class Processor {
     try {
       await actionHandler(eventWithAck);
     } catch (error) {
-      baseEvent.attempt += 1
       this.log(this.FAILED_STATUS, streamName, baseEvent)
 
-      if (this.hasToBeRejected(attempt)) {
+      if (this.hasToBeRejected(attempt + 1)) {
         await this.rejectEvent(streamName, baseEvent);
       }
     }
