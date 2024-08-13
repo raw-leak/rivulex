@@ -6,4 +6,6 @@ module.exports = {
         '^.+\\.(ts|tsx)$': ['ts-jest', { tsconfig: 'tsconfig.json', }],
     },
     testMatch: ['**/*.spec.(ts|tsx)', '**/*.e2e.(ts|tsx)'],
+    collectCoverage: true,
+    coverageDirectory: "coverage",
 };
