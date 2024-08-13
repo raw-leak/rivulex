@@ -80,8 +80,8 @@ When creating a `Publisher` instance, you need to provide a configuration object
 |--------------------------------|-----------------------------------------------------------------------------------------|--------------|--------------------------------------------|
 | `defaultStream`                | The Redis stream channel to publish events to.                                          | Yes          | -                                          |
 | `group`                        | The consumer group to associate with the events.                                        | Yes          | -                                          |
-| `onEventPublishSucceededLog`   | Callback to customize log message to invoked when a message is successfully published.  | No           | Uses default callback if not provided.     |
-| `onEventPublishFailedLog`      | Callback to customize log message invoked when publishing fails.                        | No           | Uses default callback if not provided.     |
+| `customPublishSucceededLog`   | Callback to customize log message to invoked when a message is successfully published.  | No           | Uses default callback if not provided.     |
+| `customPublishFailedLog`      | Callback to customize log message invoked when publishing fails.                        | No           | Uses default callback if not provided.     |
 
 ### Example Configuration Parameters
 
@@ -89,8 +89,8 @@ When creating a `Publisher` instance, you need to provide a configuration object
 const publisherConfig: PublisherConfig = {
     channel: 'my-channel',
     group: 'my-group',
-    onEventPublishSucceededLog: (id: string, data: NewEvent) => `Message published successfully: ${data.id}`,
-    onEventPublishFailedLog: (data: NewEvent, error: Error) => `Failed to publish message: ${data.error}`
+    customPublishSucceededLog: (id: string, data: NewEvent) => `Message published successfully: ${data.id}`,
+    customPublishFailedLog: (data: NewEvent, error: Error) => `Failed to publish message: ${data.error}`
 };
 ```
 
