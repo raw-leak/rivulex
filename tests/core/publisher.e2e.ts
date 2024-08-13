@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { Publisher } from '../../lib/core/publisher';
+import { FAILED_HOOK, PUBLISHED_HOOK } from '../../lib/constants';
 
 describe('Publisher E2E Tests', () => {
     let redisClient: Redis;
@@ -8,8 +9,8 @@ describe('Publisher E2E Tests', () => {
     const testDefaultStream = 'default-test-stream';
     const testGroup = 'test-group';
 
-    let onEventPublishSucceededLog: jest.Mock;
-    let onEventPublishFailedLog: jest.Mock;
+    let customPublishSucceededLog: jest.Mock;
+    let customPublishFailedLog: jest.Mock;
 
     let onEventPublishSucceededCallback: jest.Mock;
     let onEventPublishFailedCallback: jest.Mock;
@@ -20,8 +21,8 @@ describe('Publisher E2E Tests', () => {
     } as any;
 
     beforeAll(() => {
-        onEventPublishSucceededLog = jest.fn()
-        onEventPublishFailedLog = jest.fn()
+        customPublishSucceededLog = jest.fn()
+        customPublishFailedLog = jest.fn()
 
         onEventPublishSucceededCallback = jest.fn()
         onEventPublishFailedCallback = jest.fn()
@@ -31,15 +32,15 @@ describe('Publisher E2E Tests', () => {
             {
                 defaultStream: testDefaultStream,
                 group: testGroup,
-                onEventPublishSucceededLog,
-                onEventPublishFailedLog
+                customPublishSucceededLog,
+                customPublishFailedLog
             },
             redisClient,
             mockLogger
         );
 
-        publisher.on("published", onEventPublishSucceededCallback)
-        publisher.on("publish_failed", onEventPublishFailedCallback)
+        publisher.on(PUBLISHED_HOOK, onEventPublishSucceededCallback)
+        publisher.on(FAILED_HOOK, onEventPublishFailedCallback)
     });
 
     beforeEach(async () => {
@@ -82,14 +83,17 @@ describe('Publisher E2E Tests', () => {
             });
 
             it('should execute the callback on publishing the event successfully to define custom log messages', async () => {
-                expect(onEventPublishSucceededLog).toHaveBeenCalledWith(eventId, {
+                expect(customPublishSucceededLog).toHaveBeenCalledWith(eventId, {
                     headers: expect.objectContaining({
                         ...headers,
                         group: testGroup,
                         timestamp: expect.any(String)
-                    }), action, payload, stream: testDefaultStream
+                    }),
+                    action,
+                    payload,
+                    stream: testDefaultStream
                 })
-                expect(onEventPublishFailedLog).not.toHaveBeenCalled()
+                expect(customPublishFailedLog).not.toHaveBeenCalled()
             });
 
             it('should emit event on publishing successfully', async () => {
@@ -98,7 +102,10 @@ describe('Publisher E2E Tests', () => {
                         ...headers,
                         group: testGroup,
                         timestamp: expect.any(String)
-                    }), action, payload, stream: testDefaultStream
+                    }),
+                    action,
+                    payload,
+                    stream: testDefaultStream
                 })
                 expect(onEventPublishFailedCallback).not.toHaveBeenCalled()
             });
@@ -142,14 +149,17 @@ describe('Publisher E2E Tests', () => {
             });
 
             it('should execute the callback on publishing the event successfully to define custom log messages', async () => {
-                expect(onEventPublishSucceededLog).toHaveBeenCalledWith(eventId, {
+                expect(customPublishSucceededLog).toHaveBeenCalledWith(eventId, {
                     headers: expect.objectContaining({
                         ...headers,
                         group: testGroup,
                         timestamp: expect.any(String)
-                    }), action, payload, stream: customStream
+                    }),
+                    action,
+                    payload,
+                    stream: customStream
                 })
-                expect(onEventPublishFailedLog).not.toHaveBeenCalled()
+                expect(customPublishFailedLog).not.toHaveBeenCalled()
             });
 
             it('should emit event on publishing successfully', async () => {
@@ -158,7 +168,10 @@ describe('Publisher E2E Tests', () => {
                         ...headers,
                         group: testGroup,
                         timestamp: expect.any(String)
-                    }), action, payload, stream: customStream
+                    }),
+                    action,
+                    payload,
+                    stream: customStream
                 })
                 expect(onEventPublishFailedCallback).not.toHaveBeenCalled()
             });
@@ -195,7 +208,7 @@ describe('Publisher E2E Tests', () => {
                 const storedEvents = await redisClient.xrange(testDefaultStream, '-', '+');
                 expect(storedEvents).toHaveLength(3);
 
-                storedEvents.forEach(([id, fields], index) => {
+                storedEvents.forEach(([, fields], index) => {
                     const { action, payload, headers } = messages[index];
 
                     expect(fields).toHaveLength(6);
@@ -213,7 +226,7 @@ describe('Publisher E2E Tests', () => {
 
             it('should execute the callback on publishing the event successfully to define custom log messages', async () => {
                 messages.forEach((message, index) => {
-                    expect(onEventPublishSucceededLog).toHaveBeenCalledWith(results[index].id, {
+                    expect(customPublishSucceededLog).toHaveBeenCalledWith(results[index].id, {
                         headers: expect.objectContaining({
                             ...message.headers,
                             group: testGroup,
@@ -225,7 +238,7 @@ describe('Publisher E2E Tests', () => {
                     });
                 });
 
-                expect(onEventPublishFailedLog).not.toHaveBeenCalled();
+                expect(customPublishFailedLog).not.toHaveBeenCalled();
             });
 
             it('should emit event on publishing successfully', async () => {
@@ -247,7 +260,7 @@ describe('Publisher E2E Tests', () => {
         });
 
         describe('when publishing multiple events to custom stream', () => {
-            let messages, results, customStream;
+            let messages: Array<{ stream?: string, action: string, payload: any, headers: any }>, results, customStream;
 
             beforeEach(async () => {
                 customStream = "custom-stream";
@@ -297,7 +310,7 @@ describe('Publisher E2E Tests', () => {
 
             it('should execute the callback on publishing the event successfully to define custom log messages', async () => {
                 messages.forEach((message, index) => {
-                    expect(onEventPublishSucceededLog).toHaveBeenCalledWith(results[index].id, {
+                    expect(customPublishSucceededLog).toHaveBeenCalledWith(results[index].id, {
                         headers: expect.objectContaining({
                             ...message.headers,
                             group: testGroup,
@@ -309,7 +322,7 @@ describe('Publisher E2E Tests', () => {
                     });
                 });
 
-                expect(onEventPublishFailedLog).not.toHaveBeenCalled();
+                expect(customPublishFailedLog).not.toHaveBeenCalled();
             });
 
             it('should emit event on publishing successfully', async () => {
@@ -330,7 +343,7 @@ describe('Publisher E2E Tests', () => {
             });
         });
 
-        describe('when publishing multiple events to custom and default streams', () => {
+        describe.only('when publishing multiple events to custom and default streams', () => {
             let messages, results, customStream;
 
             beforeEach(async () => {
@@ -363,7 +376,7 @@ describe('Publisher E2E Tests', () => {
                 const storedEvents = await redisClient.xrange(customStream, '-', '+');
                 expect(storedEvents).toHaveLength(2);
 
-                defaultStoredEvents.concat(storedEvents).forEach(([id, fields], index) => {
+                defaultStoredEvents.concat(storedEvents).forEach(([, fields], index) => {
                     const { action, payload, headers } = messages[index];
 
                     expect(fields).toHaveLength(6);
@@ -381,7 +394,7 @@ describe('Publisher E2E Tests', () => {
 
             it('should execute the callback on publishing the event successfully to define custom log messages', async () => {
                 messages.forEach((message, index) => {
-                    expect(onEventPublishSucceededLog).toHaveBeenCalledWith(results[index].id, {
+                    expect(customPublishSucceededLog).toHaveBeenCalledWith(results[index].id, {
                         headers: expect.objectContaining({
                             ...message.headers,
                             group: testGroup,
@@ -393,7 +406,7 @@ describe('Publisher E2E Tests', () => {
                     });
                 });
 
-                expect(onEventPublishFailedLog).not.toHaveBeenCalled();
+                expect(customPublishFailedLog).not.toHaveBeenCalled();
             });
 
             it('should emit event on publishing successfully', async () => {

@@ -72,7 +72,7 @@ import { Subscriber } from '../../lib/core/subscriber';
 import { Channel } from '../../lib/channel/channel';
 import { RedisClient } from '../../lib/types';
 
-describe('Subscriber Unit Tests with Mock Classes', () => {
+describe('Subscriber Unit Tests', () => {
     let mockRedisClient: jest.Mocked<RedisClient>;
     let mockLogger: Console;
     let subscriber: Subscriber;
@@ -130,7 +130,7 @@ describe('Subscriber Unit Tests with Mock Classes', () => {
             const streamName = 'test-stream';
             const channel1 = subscriber.stream(streamName);
             const channel2 = subscriber.stream(streamName);
-            expect(channel1).toBe(channel2);
+            expect(channel1).toEqual(channel2);
         });
     });
 

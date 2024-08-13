@@ -64,6 +64,9 @@ export class Trimmer {
     constructor(config: TrimmerConfig, redis: RedisClient, logger: Logger) {
         const { streams, clientId, group, intervalTime, retentionPeriod } = config
 
+        if (!redis) throw new Error('Missing required "redis" parameter');
+        if (!group) throw new Error('Missing required "group" parameter');
+
         this.redis = redis;
         this.logger = logger;
 
@@ -166,13 +169,13 @@ export class Trimmer {
     * @returns {Promise<void>} - A promise that resolves when the trimming process is complete.
     */
     private async trim() {
-        await Promise.allSettled(this.streams.map(async channel => {
+        await Promise.allSettled(this.streams.map(async stream => {
             try {
-                if (await this.shouldTrim(channel)) {
-                    await this.trimStream(channel);
+                if (await this.shouldTrim(stream)) {
+                    await this.trimStream(stream);
                 }
             } catch (error) {
-                this.logger.error(`trimming of ${channel} stream has failed with error:`, error)
+                this.logger.error(`trimming of ${stream} stream has failed with error:`, error)
             }
         }))
     }
@@ -181,16 +184,24 @@ export class Trimmer {
     * Starts the trimming process, initially delayed, then periodically based on the random interval.
     * @returns {Promise<void>} - A promise that resolves when the trimming process is started.
     */
-    public async start(): Promise<void> {
-        this.timeoutId = setTimeout(async () => {
-            await this.trim();
-        }, this.getInitialDelay());
-
-        this.intervalId = setInterval(async () => {
-            await this.trim();
-        }, this.getRandomInterval());
+    public start(): void {
+        this.scheduleInitialTrim(this.getInitialDelay());
+        this.schedulePeriodicTrim(this.getRandomInterval());
 
         this.logger.debug(`Rivulex Trimmer ${this.clientId} initiated.`);
+    }
+
+    private scheduleInitialTrim(delay: number): void {
+        this.timeoutId = setTimeout(async () => {
+            await this.trim();
+            this.timeoutId = null
+        }, delay);
+    }
+
+    private schedulePeriodicTrim(interval: number): void {
+        this.intervalId = setInterval(async () => {
+            await this.trim();
+        }, interval);
     }
 
     /**
@@ -198,15 +209,22 @@ export class Trimmer {
     * @returns {void}
     */
     public stop(): void {
+        this.stopInitialTrim();
+        this.stopPeriodicTrim();
+        this.logger.debug(`Rivulex Trimmer ${this.clientId} stopped.`);
+    }
+
+    private stopInitialTrim(): void {
         if (this.timeoutId) {
             clearTimeout(this.timeoutId);
             this.timeoutId = null;
         }
+    }
+
+    private stopPeriodicTrim(): void {
         if (this.intervalId) {
             clearInterval(this.intervalId);
             this.intervalId = null;
         }
-
-        this.logger.debug(`Rivulex Trimmer ${this.clientId} stopped.`);
     }
 }

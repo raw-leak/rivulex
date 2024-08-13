@@ -2,7 +2,7 @@ import EventEmitter from 'node:events';
 import { Trimmer } from "./trimmer";
 import { Formatter } from "../utils/formatter"
 import { HookType, Logger, NewEvent, RedisClient } from "../types";
-import { PUBLISHED_HOOK, FAILED_HOOK } from '../hooks';
+import { PUBLISHED_HOOK, FAILED_HOOK } from '../constants';
 import { PublisherConfig, PublishFailedLog, PublishSuccessLog, PublishedHookPayload, FailedHookPayload } from "../config/publisher.config";
 
 /**
@@ -24,13 +24,13 @@ export class Publisher {
     * Optional callback to be invoked when a message is successfully published.
     * Allows developers to implement custom logging or other processing for successful publishes.
     */
-    private onEventPublishSucceededLog: PublishSuccessLog<any, any>;
+    private publishSucceededLog: PublishSuccessLog<any, any>;
 
     /**
     * Optional callback to be invoked when publishing fails.
     * Allows developers to implement custom error handling or logging for failed publishes.
     */
-    private onEventPublishFailedLog: PublishFailedLog<any, any>;
+    private publishFailedLog: PublishFailedLog<any, any>;
 
     private redis: RedisClient
     private formatter: Formatter;
@@ -49,7 +49,7 @@ export class Publisher {
     * @throws {Error} Throws an error if required parameters are missing.
     */
     constructor(config: PublisherConfig, redis: RedisClient, logger: Logger) {
-        const { defaultStream, group, onEventPublishSucceededLog, onEventPublishFailedLog } = config
+        const { defaultStream, group, customPublishFailedLog, customPublishSucceededLog } = config
 
         if (!redis) throw new Error('Missing required "redis" parameter');
         if (!defaultStream) throw new Error('Missing required "defaultStream" parameter');
@@ -61,8 +61,8 @@ export class Publisher {
         this.redis = redis;
         this.logger = logger;
 
-        this.onEventPublishSucceededLog = onEventPublishSucceededLog || this.defaultOnEventPublishSucceededLog;
-        this.onEventPublishFailedLog = onEventPublishFailedLog || this.defaultOnEventPublishFailedLog;
+        this.publishSucceededLog = customPublishSucceededLog || this.defaultPublishSucceededLog;
+        this.publishFailedLog = customPublishFailedLog || this.defaultPublishFailedLog;
 
         this.formatter = new Formatter();
         this.eventEmitter = new EventEmitter();
@@ -72,11 +72,11 @@ export class Publisher {
         }
     }
 
-    private defaultOnEventPublishSucceededLog<P, H>(id: string, newEvent: NewEvent<P, H>): string {
+    private defaultPublishSucceededLog<P, H>(id: string, newEvent: NewEvent<P, H>): string {
         return JSON.stringify({ type: "event", status: this.PUBLISHED_STATUS, id, stream: newEvent.stream, action: newEvent.action, timestamp: Date.now() })
     };
 
-    private defaultOnEventPublishFailedLog<P, H>(newEvent: NewEvent<P, H>): string {
+    private defaultPublishFailedLog<P, H>(newEvent: NewEvent<P, H>): string {
         return JSON.stringify({ type: "event", status: this.PUBLISHED_FAILED_STATUS, stream: newEvent.stream, action: newEvent.action, timestamp: Date.now() })
     };
 
@@ -84,17 +84,17 @@ export class Publisher {
     * Handler for successful publishing.
     */
     private onEventPublishSucceeded<P, H>(id: string, newEvent: NewEvent<P, H>) {
-        this.logger.log(this.onEventPublishSucceededLog(id, newEvent))
-        this.eventEmitter.emit('published', id, newEvent);
+        this.logger.log(this.publishSucceededLog(id, newEvent))
+        this.eventEmitter.emit(PUBLISHED_HOOK, id, newEvent);
     };
 
     /**
     * Handler for failed publishing.
     */
     private onEventPublishFailed<P, H>(newEvent: NewEvent<P, H>, error: Error) {
-        this.logger.log(this.onEventPublishFailedLog(newEvent, error))
+        this.logger.log(this.publishFailedLog(newEvent, error))
         this.logger.error(JSON.stringify(error))
-        this.eventEmitter.emit('error_published', { newEvent, error });
+        this.eventEmitter.emit(FAILED_HOOK, newEvent, error);
     };
 
     /**
