@@ -1,6 +1,6 @@
 import { Redis, RedisOptions } from "ioredis";
 import { Channel } from "./channel/channel";
-import { PUBLISHED_HOOK, FAILED_HOOK } from "./hooks";
+import { PUBLISHED_HOOK, FAILED_HOOK } from "./constants";
 
 /**
  * Type alias for a Redis client.
@@ -146,3 +146,6 @@ export interface Logger {
 }
 
 export type HookType = typeof PUBLISHED_HOOK | typeof FAILED_HOOK;
+
+export type XReadGroupResponse = Array<[string, Array<RawEvent> | undefined]> | undefined;
+export type XPendingResponse = Array<PendingEvent> | undefined;
