@@ -8,7 +8,7 @@ import { TrimmerConfig } from "./trimmer.config";
  */
 export type PublishSuccessLog<P, H> = (
     id: string,
-    data: NewEvent,
+    data:    NewEvent,
 ) => string;
 
 /**
@@ -28,7 +28,7 @@ export type PublishFailedLog<P, H> = (
 */
 export type PublishedHookPayload<P, H> = (
     id: string,
-    event: NewEvent,
+    event: NewEvent<P, Headers<H>>,
 ) => void;
 
 /**
@@ -37,7 +37,7 @@ export type PublishedHookPayload<P, H> = (
 * @template H - The type of the headers.
 */
 export type FailedHookPayload<P, H> = (
-    event: NewEvent<P, H>,
+    event: NewEvent<P, Headers<H>>,
     error: Error
 ) => void;
 
@@ -69,9 +69,9 @@ export interface PublisherConfig {
     * @returns A custom log message string.
     * 
     * Example:
-    * onEventPublishSucceededLog: (id, event) => `Event with ID ${id} and action ${event.action} was successfully published.`
+    * customPublishSucceededLog: (id, event) => `Event with ID ${id} and action ${event.action} was successfully published.`
     */
-    onEventPublishSucceededLog?: PublishSuccessLog<any, any>;
+    customPublishSucceededLog?: PublishSuccessLog<any, any>;
 
     /**
     * Callback to be invoked when publishing an event fails to define a custom log message.
@@ -83,9 +83,9 @@ export interface PublisherConfig {
     * @returns A custom log message string.
     * 
     * Example:
-    * onEventPublishFailedLog: (event, error) => `Failed to publish event with action ${event.action}. Error: ${error.message}`
+    * customPublishFailedLog: (event, error) => `Failed to publish event with action ${event.action}. Error: ${error.message}`
     */
-    onEventPublishFailedLog?: PublishFailedLog<any, any>;
+    customPublishFailedLog?: PublishFailedLog<any, any>;
 
     /**
      * Configuration for the Trimmer.
