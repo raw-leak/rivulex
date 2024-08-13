@@ -40,10 +40,10 @@ export class Formatter {
         ];
     }
 
-    getNewEvent<P, H>(streamName: string, group: string, action: string, payload: P, headers: H): NewEvent<P, H> {
+    getNewEvent<P, H>(stream: string, group: string, action: string, payload: P, headers: H): NewEvent<P, H> {
         return {
             action,
-            stream: streamName,
+            stream,
             payload,
             headers: {
                 ...headers,
