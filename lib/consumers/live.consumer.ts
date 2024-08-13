@@ -1,8 +1,6 @@
 import { Formatter } from "../utils/formatter";
 import { Processor } from "../processor/processor";
-import { ChannelsHandlers, Logger, RawEvent, RedisClient } from "../types";
-
-type XReadGroupResponse = Array<[string, Array<RawEvent> | undefined]> | undefined;
+import { ChannelsHandlers, Logger, RedisClient, XReadGroupResponse } from "../types";
 
 /**
 * Configuration object for the `LiveConsumer` class
@@ -113,7 +111,6 @@ export class LiveConsumer {
     consume = <T>(channelsHandlers: ChannelsHandlers) => {
         if (!this.enabled) {
             this.enabled = true;
-
             (async () => {
                 while (this.enabled) {
                     try {
@@ -129,7 +126,7 @@ export class LiveConsumer {
     /**
     * Stop consuming live events
     */
-    async stop() {
+    stop() {
         this.enabled = false;
     }
 }

@@ -1,9 +1,7 @@
 import { Backoff } from "../utils/backoff";
 import { Formatter } from "../utils/formatter";
 import { Processor } from "../processor/processor";
-import { PendingEvent, RawEvent, RedisClient, BaseEvent, ChannelsHandlers, Logger } from "../types";
-
-type XPendingResponse = Array<PendingEvent> | undefined;
+import { RawEvent, RedisClient, BaseEvent, ChannelsHandlers, Logger, XPendingResponse } from "../types";
 
 /**
 * Configuration object for the `FailedConsumer` class.
@@ -120,7 +118,6 @@ export class FailedConsumer {
 
         await Promise.all(this.streams.map(async streamName => {
             const failedEvents = await this.fetchFailedEvents(streamName)
-
             if (failedEvents && failedEvents.length) {
                 failedEventsCount += failedEvents.length
                 const stream = channelsHandlers.get(streamName);
