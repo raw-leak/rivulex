@@ -1,7 +1,7 @@
 import EventEmitter from 'node:events';
 import { Trimmer } from "./trimmer";
 import { Formatter } from "../utils/formatter"
-import { HookType, Logger, NewEvent, RedisClient } from "../types";
+import { PublisherHookType, Logger, NewEvent, RedisClient } from "../types";
 import { PUBLISHED_HOOK, FAILED_HOOK } from '../constants';
 import { PublisherConfig, PublishFailedLog, PublishSuccessLog, PublishedHookPayload, FailedHookPayload } from "../config/publisher.config";
 
@@ -195,7 +195,7 @@ export class Publisher {
     */
     public on<P, H>(event: typeof PUBLISHED_HOOK, listener: (data: PublishedHookPayload<P, H>) => void): void;
     public on<P, H>(event: typeof FAILED_HOOK, listener: (data: FailedHookPayload<P, H>) => void): void;
-    public on(event: HookType, listener: (data: any) => void): void {
+    public on(event: PublisherHookType, listener: (data: any) => void): void {
         this.eventEmitter.on(event, listener);
     }
 

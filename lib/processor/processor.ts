@@ -1,8 +1,14 @@
+import EventEmitter from 'node:events';
 import { PromisePool } from '@supercharge/promise-pool'
 
 import { Retrier } from "../utils/retrier";
 import { Formatter } from "../utils/formatter";
 import { Event, Ack, RedisClient, Handler, Logger, BaseEvent } from "../types";
+import { CustomLog } from '../config/subscriber.config';
+
+import { CONFIRMED_HOOK, REJECTED_HOOK, FAILED_HOOK, TIMEOUT_HOOK } from '../constants';
+import { CONFIRMED_STATUS, REJECTED_STATUS, TIMEOUT_STATUS, FAILED_STATUS } from '../constants';
+import { RETRY, RETRY_BACKOFF_TIME, DEAD_LETTER } from '../constants';
 
 /**
 * Configuration object for the `Processor` class.
@@ -21,6 +27,18 @@ export interface ProcessorConfig {
   /** @type {SubscriberConfig['processConcurrency']} */
   processConcurrency: number;
 
+  /** @type {SubscriberConfig['customEventConfirmedLog']} */
+  customEventConfirmedLog?: CustomLog<any, any>;
+
+  /** @type {SubscriberConfig['customEventRejectedLog']} */
+  customEventRejectedLog?: CustomLog<any, any>;
+
+  /** @type {SubscriberConfig['customEventTimeoutLog']} */
+  customEventTimeoutLog?: CustomLog<any, any>;
+
+  /** @type {SubscriberConfig['customEventFailedLog']} */
+  customEventFailedLog?: CustomLog<any, any>;
+
 }
 
 /**
@@ -38,25 +56,28 @@ export class Processor {
   private logger: Logger;
   private formatter: Formatter;
   private redis: RedisClient;
+  private eventEmitter: EventEmitter;
 
-  readonly DEAD_LETTER = 'dead_letter';
+  /**
+   * Log invoked upon successful message confirmation.
+   */
+  private eventConfirmedLog: CustomLog<any, any>;
 
-  private readonly TIMEOUT_FAILED_STATUS = "TIMEOUT_FAILED"
-  private readonly UNCONTROLLED_FAILED_STATUS = "UNCONTROLLED_FAILED"
+  /**
+   * Log invoked when an event is rejected to the dead-letter queue.
+   */
+  private eventRejectedLog: CustomLog<any, any>;
 
-  private readonly CONFIRMED_STATUS = "CONFIRMED"
-  private readonly CONFIRMED_FAILED_STATUS = "CONFIRMED_FAILED"
+  /**
+   * Log invoked when an event times out without being processed.
+   */
+  private eventTimeoutLog: CustomLog<any, any>;
 
-  private readonly FAILED_STATUS = "FAILED"
+  /**
+   * Log invoked when an event fails during processing.
+   */
+  private eventFailedLog: CustomLog<any, any>;
 
-  private readonly REJECTED_STATUS = "REJECTED"
-  private readonly REJECTED_FAILED_STATUS = "REJECTED_FAILED"
-
-  private readonly SKIPPED_STATUS = "SKIPPED"
-  private readonly SKIPPED_FAILED_STATUS = "SKIPPED_FAILED"
-
-  private readonly RETRY = 3
-  private readonly RETRY_BACKOFF_TIME = 50
 
   /**
   * Creates a new `Processor` instance.
@@ -64,9 +85,11 @@ export class Processor {
   * @param {Object} config - The configuration object.
   * @param {RedisClient} redis - The Redis client for interacting with Redis.
   * @param {Console} logger - The logger for logging information and errors.
+  * @param {EventEmitter} eventEmitter - Event emitter for hooks handling.
   */
-  constructor(config: ProcessorConfig, redis: RedisClient, logger: Logger) {
+  constructor(config: ProcessorConfig, redis: RedisClient, logger: Logger, eventEmitter: EventEmitter) {
     const { group, retries, processTimeout, processConcurrency } = config
+    const { customEventConfirmedLog, customEventRejectedLog, customEventTimeoutLog, customEventFailedLog } = config
 
     this.group = group;
     this.retries = retries;
@@ -76,16 +99,63 @@ export class Processor {
     this.redis = redis;
     this.logger = logger;
 
-    this.formatter = new Formatter()
-    this.retrier = new Retrier(this.RETRY, this.RETRY_BACKOFF_TIME)
+    this.eventConfirmedLog = customEventConfirmedLog || this.defaultEventConfirmedLog;
+    this.eventRejectedLog = customEventRejectedLog || this.defaultEventRejectedLog;
+    this.eventTimeoutLog = customEventTimeoutLog || this.defaultEventTimeoutLog;
+    this.eventFailedLog = customEventFailedLog || this.defaultEventFailedLog;
+
+    this.eventEmitter = eventEmitter;
+    this.formatter = new Formatter();
+    this.retrier = new Retrier(RETRY, RETRY_BACKOFF_TIME);
   }
 
-  private log(status: string, streamName: string, baseEvent: BaseEvent, error?: Error) {
-    this.logger.log(JSON.stringify({ type: "event", status, id: baseEvent.id, stream: streamName, action: baseEvent.action, attempt: baseEvent.attempt, timestamp: Date.now() }))
-    if (error) {
-      this.logger.error(JSON.stringify({ error }))
-    }
-  }
+  private defaultEventConfirmedLog<P, H>(event: BaseEvent<P, H>): string {
+    return JSON.stringify({ type: "event", status: CONFIRMED_STATUS, id: event.id, stream: event.stream, action: event.action, timestamp: Date.now() })
+  };
+
+  private defaultEventRejectedLog<P, H>(event: BaseEvent<P, H>): string {
+    return JSON.stringify({ type: "event", status: REJECTED_STATUS, id: event.id, stream: event.stream, action: event.action, timestamp: Date.now() })
+  };
+
+  private defaultEventTimeoutLog<P, H>(event: BaseEvent<P, H>): string {
+    return JSON.stringify({ type: "event", status: TIMEOUT_STATUS, id: event.id, stream: event.stream, action: event.action, timestamp: Date.now() })
+  };
+
+  private defaultEventFailedLog<P, H>(event: BaseEvent<P, H>): string {
+    return JSON.stringify({ type: "event", status: FAILED_STATUS, id: event.id, stream: event.stream, action: event.action, timestamp: Date.now() })
+  };
+
+  /**
+   * Handles successful event confirmation.
+   */
+  private onEventConfirmed<P, H>(baseEvent: BaseEvent<P, H>) {
+    this.logger.log(this.eventConfirmedLog(baseEvent))
+    this.eventEmitter.emit(CONFIRMED_HOOK, baseEvent);
+  };
+
+  /**
+   * Handles event rejection.
+   */
+  private onEventRejected<P, H>(baseEvent: BaseEvent<P, H>, error?: Error) {
+    this.logger.log(this.eventRejectedLog(baseEvent, error))
+    this.eventEmitter.emit(REJECTED_HOOK, baseEvent, error);
+  };
+
+  /**
+   * Handles event timeout.
+   */
+  private onEventTimeout<P, H>(baseEvent: BaseEvent<P, H>) {
+    this.logger.log(this.eventTimeoutLog(baseEvent))
+    this.eventEmitter.emit(TIMEOUT_HOOK, baseEvent);
+  };
+
+  /**
+   * Handles event failure.
+   */
+  private onEventFailed<P, H>(baseEvent: BaseEvent<P, H>, error: Error) {
+    this.logger.log(this.eventFailedLog(baseEvent, error))
+    this.eventEmitter.emit(FAILED_HOOK, baseEvent, error);
+  };
 
   /**
   * Creates a `Ack` function that confirms an event has been processed successfully.
@@ -99,9 +169,9 @@ export class Processor {
     return async () => {
       try {
         await this.retrier.retry(() => this.redis.xack(streamName, this.group, baseEvent.id))
-        this.log(this.CONFIRMED_STATUS, streamName, baseEvent)
+        this.onEventConfirmed(baseEvent)
       } catch (error) {
-        this.log(this.CONFIRMED_FAILED_STATUS, streamName, baseEvent, error as Error)
+        this.logger.error(`Failed to confirm event with ID ${baseEvent.id} in stream ${streamName} after processing. Error: ${error}`, { error, eventId: baseEvent.id, streamName, group: this.group });
       }
     }
   }
@@ -115,9 +185,8 @@ export class Processor {
   private async skipEvent(streamName: string, baseEvent: BaseEvent) {
     try {
       await this.retrier.retry(() => this.redis.xack(streamName, this.group, baseEvent.id))
-      this.log(this.SKIPPED_STATUS, streamName, baseEvent)
     } catch (error) {
-      this.log(this.SKIPPED_FAILED_STATUS, streamName, baseEvent, error as Error)
+      this.logger.error(`Failed to skip event with ID ${baseEvent.id} in stream ${streamName} after processing. Error: ${error}`, { error, eventId: baseEvent.id, streamName, group: this.group });
     }
   }
 
@@ -127,7 +196,7 @@ export class Processor {
   * @param {string} streamName - The name of the Redis stream.
   * @param {Event} event - The event to be rejected.
   */
-  private async rejectEvent(streamName: string, baseEvent: BaseEvent) {
+  private async rejectEvent(streamName: string, baseEvent: BaseEvent, error?: Error) {
     try {
       const rejectedHeaders = {
         ...baseEvent.headers,
@@ -140,14 +209,14 @@ export class Processor {
       const newEvent = this.formatter.getNewEvent(streamName, this.group, baseEvent.action, baseEvent.payload, rejectedHeaders);
       const newEventArgs = this.formatter.getSentEvent(newEvent);
 
-      pipeline.xadd(this.DEAD_LETTER, '*', ...newEventArgs);
+      pipeline.xadd(DEAD_LETTER, '*', ...newEventArgs);
       pipeline.xack(streamName, this.group, baseEvent.id);
 
       await this.retrier.retry(() => pipeline.exec())
 
-      this.log(this.REJECTED_STATUS, streamName, baseEvent)
+      this.onEventRejected(baseEvent, error)
     } catch (error) {
-      this.log(this.REJECTED_FAILED_STATUS, streamName, baseEvent, error as Error)
+      this.logger.error(`Failed to reject event with ID ${baseEvent.id} in stream ${streamName} after processing. Error: ${error}`, { error, eventId: baseEvent.id, streamName, group: this.group });
     }
 
   }
@@ -171,9 +240,9 @@ export class Processor {
       .for<BaseEvent>(baseEvents)
       .handleError((error, baseEvent) => {
         if (error.name == "PromisePoolError") {
-          this.log(this.TIMEOUT_FAILED_STATUS, streamName, baseEvent)
+          this.onEventTimeout(baseEvent)
         } else {
-          this.log(this.UNCONTROLLED_FAILED_STATUS, streamName, baseEvent, error as Error)
+          this.onEventFailed(baseEvent, error)
         }
       })
       .process((baseEvent) => this.processUnit(streamName, baseEvent, actionHandlers))
@@ -206,10 +275,10 @@ export class Processor {
     try {
       await actionHandler(eventWithAck);
     } catch (error) {
-      this.log(this.FAILED_STATUS, streamName, baseEvent)
+      this.onEventFailed(baseEvent, error as Error);
 
       if (this.hasToBeRejected(attempt + 1)) {
-        await this.rejectEvent(streamName, baseEvent);
+        await this.rejectEvent(streamName, baseEvent, error as Error);
       }
     }
   }

@@ -1,3 +1,4 @@
+import EventEmitter from 'node:events';
 import { Redis } from 'ioredis';
 import { Channel } from '../../lib/channel/channel';
 import { Publisher } from '../../lib/core/publisher';
@@ -34,19 +35,20 @@ describe('LiveConsumer Unit Tests', () => {
     let config: LiveConsumerConfig, processor: Processor, redisClient: Redis;
     let retries: number, processTimeout: number, processConcurrency: number;
     let liveConsumer: LiveConsumer;
+    let eventEmitter: EventEmitter;
 
     beforeAll(() => {
         retries = 3
         processTimeout = 200
         processConcurrency = 100
-
+        eventEmitter = new EventEmitter()
         redisClient = new Redis({ port: 6379, host: "localhost" });
         processor = new Processor({
             group: 'test-group',
             retries,
             processTimeout,
             processConcurrency
-        }, redisClient, mockLogger);
+        }, redisClient, mockLogger, eventEmitter);
         config = {
             clientId: 'test-client-id',
             streams: ['test-channel'],
@@ -55,8 +57,6 @@ describe('LiveConsumer Unit Tests', () => {
             blockTime: 1,
         };
     });
-
-
 
     describe('when initiating LiveConsumer', () => {
         describe('when initiating LiveConsumer without required params', () => {
@@ -75,8 +75,8 @@ describe('LiveConsumer Unit Tests', () => {
             });
         });
     });
-    describe('when consuming events with LoveConsumer', () => {
 
+    describe('when consuming events with LoveConsumer', () => {
         afterAll((done) => {
             redisClient.quit(done);
         });

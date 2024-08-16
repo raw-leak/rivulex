@@ -1,4 +1,34 @@
+import { BaseEvent, Event } from "../types";
 import { TrimmerConfig } from "./trimmer.config";
+
+/**
+ * Callback type for successful event processing custom log message.
+ * @template P - The type of the payload.
+ * @template H - The type of the headers.
+ */
+export type CustomLog<P, H> = (
+    data: BaseEvent<P, H>,
+    error?: Error,
+) => string;
+
+/**
+* Callback type for handling the payload of  published event.
+* @template P - The type of the payload.
+* @template H - The type of the headers.
+*/
+export type ProcessedHookPayload<P, H> = (
+    event: Event<P, H>,
+) => void;
+
+/**
+* Callback type for handling the payload of a successfully published event.
+* @template P - The type of the payload.
+* @template H - The type of the headers.
+*/
+export type ErrorHookPayload<P, H> = (
+    event: Event<P, H>,
+    error: Error
+) => void;
 
 export interface SubscriberConfig {
     /**
@@ -115,4 +145,45 @@ export interface SubscriberConfig {
     * If provided, the Publisher will initialize a Trimmer to manage trimming old events from the Redis stream.
     */
     trimmer?: TrimmerConfig
+
+    /**
+     * Optional callback to define a custom log message when an event is successfully confirmed.
+     * @param {Event} event - The event data that was published.
+     * @returns A custom log message string.
+     * 
+     * Example:
+     * customEventConfirmedLog: (event) => `Event with ID ${id} and action ${event.action} was successfully confirmed.`
+     */
+    customEventConfirmedLog?: CustomLog<any, any>;
+
+    /**
+     * Optional callback to define a custom log message when an event is rejected and sent to the dead-letter queue.
+     * @param {Event} event - The event data that was published.
+     * @returns A custom log message string.
+     * 
+     * Example:
+     * customEventRejectedLog: (event) => `Event with ID ${id} and action ${event.action} was rejected.`
+     */
+    customEventRejectedLog?: CustomLog<any, any>;
+
+    /**
+     * Optional callback to define a custom log message when an event times out.
+     * @param {Event} event - The event data that was published.
+     * @returns A custom log message string.
+     * 
+     * Example:
+     * customEventTimeoutLog: (event) => `Event with ID ${id} and action ${event.action} timed out.`
+     */
+    customEventTimeoutLog?: CustomLog<any, any>;
+
+    /**
+     * Optional callback to define a custom log message when an event fails.
+     * @param {Event} event - The event data that was published.
+     * @param {Error} error - The error that occurred during processing.
+     * @returns A custom log message string.
+     * 
+     * Example:
+     * customEventFailedLog: (event, error) => `Event with ID ${id} and action ${event.action} failed due to error: ${error.message}.`
+     */
+    customEventFailedLog?: CustomLog<any, any>;
 }

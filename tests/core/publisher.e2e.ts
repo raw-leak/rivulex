@@ -343,7 +343,7 @@ describe('Publisher E2E Tests', () => {
             });
         });
 
-        describe.only('when publishing multiple events to custom and default streams', () => {
+        describe('when publishing multiple events to custom and default streams', () => {
             let messages, results, customStream;
 
             beforeEach(async () => {

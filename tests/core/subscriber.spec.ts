@@ -77,6 +77,9 @@ describe('Subscriber Unit Tests', () => {
     let mockLogger: Console;
     let subscriber: Subscriber;
 
+    const customPublishFailedLog = jest.fn();
+    const customPublishSucceededLog = jest.fn();
+
     beforeEach(() => {
         mockRedisClient = {
             xgroup: createGroup,

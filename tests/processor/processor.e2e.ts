@@ -1,7 +1,9 @@
+import EventEmitter from 'node:events';
 import { Redis } from "ioredis";
 import { Processor, ProcessorConfig } from "../../lib/processor/processor";
 import { Handler, RedisClient, Event } from "../../lib/types";
 import { Publisher } from "../../lib/core/publisher";
+import { CONFIRMED_HOOK, DEAD_LETTER, FAILED_HOOK, REJECTED_HOOK, TIMEOUT_HOOK } from "../../lib/constants";
 
 const mockLogger = {
     log: jest.fn(),
@@ -12,23 +14,46 @@ const mockLogger = {
 describe('Processor E2E Tests', () => {
     let clientId = "client-id"
     const stream = "stream-test"
+
+
+    let customEventConfirmedLog = jest.fn()
+    let customEventRejectedLog = jest.fn()
+    let customEventTimeoutLog = jest.fn()
+    let customEventFailedLog = jest.fn()
+
+    let confirmedHookHandler = jest.fn()
+    let rejectedHookHandler = jest.fn()
+    let failedHookHandler = jest.fn()
+    let timeoutHookHandler = jest.fn()
+
     const config: ProcessorConfig = {
         group: 'test-group',
         retries: 3,
         processTimeout: 60_000,
         processConcurrency: 1_000,
+        customEventConfirmedLog,
+        customEventRejectedLog,
+        customEventTimeoutLog,
+        customEventFailedLog,
     }
 
     let redisClient: RedisClient;
     let processor: Processor;
+    let eventEmitter: EventEmitter
 
     beforeAll(async () => {
         redisClient = new Redis({ port: 6379, host: "localhost" })
+        eventEmitter = new EventEmitter()
 
-        processor = new Processor(config, redisClient, mockLogger);
+        eventEmitter.on(CONFIRMED_HOOK, confirmedHookHandler)
+        eventEmitter.on(REJECTED_HOOK, rejectedHookHandler)
+        eventEmitter.on(FAILED_HOOK, failedHookHandler)
+        eventEmitter.on(TIMEOUT_HOOK, timeoutHookHandler)
+
+        processor = new Processor(config, redisClient, mockLogger, eventEmitter);
 
         await redisClient.del(stream);
-        await redisClient.del(processor.DEAD_LETTER);
+        await redisClient.del(DEAD_LETTER);
     });
 
     afterEach(async () => {
@@ -70,6 +95,54 @@ describe('Processor E2E Tests', () => {
             expect(handlerAction2).toHaveBeenCalledTimes(10);
             expect(handlerAction3).toHaveBeenCalledTimes(10);
 
+            expect(customEventConfirmedLog).toHaveBeenCalledTimes(30);
+            expect(customEventRejectedLog).toHaveBeenCalledTimes(0);
+            expect(customEventTimeoutLog).toHaveBeenCalledTimes(0);
+            expect(customEventFailedLog).toHaveBeenCalledTimes(0);
+
+            for (let i = 0; i < 10; i++) {
+                [action1, action2, action3].forEach((action) => {
+                    expect(customEventConfirmedLog).toHaveBeenCalledWith({
+                        id: expect.any(String),
+                        ack: expect.any(Function),
+                        headers: expect.objectContaining({
+                            id: `${stream}-${i}`,
+                            group: config.group,
+                            timestamp: expect.any(String)
+                        }),
+                        action,
+                        payload: { id: `${stream}-${i}` },
+                        stream,
+                        attempt: 1
+                    });
+                })
+            }
+
+            expect(confirmedHookHandler).toHaveBeenCalledTimes(30);
+            expect(rejectedHookHandler).toHaveBeenCalledTimes(0);
+            expect(timeoutHookHandler).toHaveBeenCalledTimes(0);
+            expect(failedHookHandler).toHaveBeenCalledTimes(0);
+
+            for (let i = 0; i < 10; i++) {
+                [action1, action2, action3].forEach((action) => {
+                    expect(confirmedHookHandler).toHaveBeenCalledWith({
+                        id: expect.any(String),
+                        ack: expect.any(Function),
+                        headers: expect.objectContaining({
+                            id: `${stream}-${i}`,
+                            group: config.group,
+                            timestamp: expect.any(String)
+                        }),
+                        action,
+                        payload: { id: `${stream}-${i}` },
+                        stream,
+                        attempt: 1
+                    });
+                })
+            }
+
+
+
             const pendingEventsInfo = await redisClient.xpending(stream, config.group, '-', '+', 300);
             expect(pendingEventsInfo).toHaveLength(0);
 
@@ -78,8 +151,9 @@ describe('Processor E2E Tests', () => {
                 expect(claimed).toHaveLength(0);
             }
 
-            const deadLetterEvents = await redisClient.xrange(processor.DEAD_LETTER, '-', '+');
+            const deadLetterEvents = await redisClient.xrange(DEAD_LETTER, '-', '+');
             expect(deadLetterEvents).toHaveLength(0);
+
         });
     });
 
@@ -109,6 +183,52 @@ describe('Processor E2E Tests', () => {
             expect(handlerAction2).toHaveBeenCalledTimes(20);
             expect(handlerAction3).toHaveBeenCalledTimes(20);
 
+            expect(customEventConfirmedLog).toHaveBeenCalledTimes(60);
+            expect(customEventRejectedLog).toHaveBeenCalledTimes(0);
+            expect(customEventTimeoutLog).toHaveBeenCalledTimes(0);
+            expect(customEventFailedLog).toHaveBeenCalledTimes(0);
+
+            for (let i = 0; i < 20; i++) {
+                [action1, action2, action3].forEach((action) => {
+                    expect(customEventConfirmedLog).toHaveBeenCalledWith({
+                        id: expect.any(String),
+                        ack: expect.any(Function),
+                        headers: expect.objectContaining({
+                            id: `${stream}-${i}`,
+                            group: config.group,
+                            timestamp: expect.any(String)
+                        }),
+                        action,
+                        payload: { id: `${stream}-${i}`, },
+                        stream,
+                        attempt: 2
+                    });
+                })
+            }
+
+            expect(confirmedHookHandler).toHaveBeenCalledTimes(60);
+            expect(rejectedHookHandler).toHaveBeenCalledTimes(0);
+            expect(timeoutHookHandler).toHaveBeenCalledTimes(0);
+            expect(failedHookHandler).toHaveBeenCalledTimes(0);
+
+            for (let i = 0; i < 20; i++) {
+                [action1, action2, action3].forEach((action) => {
+                    expect(confirmedHookHandler).toHaveBeenCalledWith({
+                        id: expect.any(String),
+                        ack: expect.any(Function),
+                        headers: expect.objectContaining({
+                            id: `${stream}-${i}`,
+                            group: config.group,
+                            timestamp: expect.any(String)
+                        }),
+                        action,
+                        payload: { id: `${stream}-${i}` },
+                        stream,
+                        attempt: 2
+                    });
+                })
+            }
+
             const pendingEventsInfo = await redisClient.xpending(stream, config.group, '-', '+', 300);
             expect(pendingEventsInfo).toHaveLength(0);
 
@@ -117,8 +237,10 @@ describe('Processor E2E Tests', () => {
                 expect(claimed).toHaveLength(0);
             }
 
-            const deadLetterEvents = await redisClient.xrange(processor.DEAD_LETTER, '-', '+');
+            const deadLetterEvents = await redisClient.xrange(DEAD_LETTER, '-', '+');
             expect(deadLetterEvents).toHaveLength(0);
+
+
         });
     });
 
@@ -148,21 +270,31 @@ describe('Processor E2E Tests', () => {
             expect(handlerAction2).toHaveBeenCalledTimes(0);
             expect(handlerAction3).toHaveBeenCalledTimes(0);
 
+            expect(customEventConfirmedLog).toHaveBeenCalledTimes(0);
+            expect(customEventRejectedLog).toHaveBeenCalledTimes(90);
+            expect(customEventTimeoutLog).toHaveBeenCalledTimes(0);
+            expect(customEventFailedLog).toHaveBeenCalledTimes(0);
+
+            expect(confirmedHookHandler).toHaveBeenCalledTimes(0);
+            expect(rejectedHookHandler).toHaveBeenCalledTimes(90);
+            expect(timeoutHookHandler).toHaveBeenCalledTimes(0);
+            expect(failedHookHandler).toHaveBeenCalledTimes(0);
+
             const pendingEventsInfo = await redisClient.xpending(stream, config.group, '-', '+', 300);
             expect(pendingEventsInfo).toHaveLength(0);
 
-            const deadLetterEvents = await redisClient.xrange(processor.DEAD_LETTER, '-', '+');
+            const deadLetterEvents = await redisClient.xrange(DEAD_LETTER, '-', '+');
             expect(deadLetterEvents).toHaveLength(90); // all events should be in dead-letter stream
         });
     });
 
     describe('when the handler fails with 2 attempts and messages should be rejected as the error has been detected', () => {
-        it('should not reject events when handler fails', async () => {
+        it('should reject events when handler fails', async () => {
             const action = 'test-action-fail';
 
             const events = await generateEvents({ action, group: config.group, stream, clientId, attempt: 2, count: 20 });
 
-            const handler: Handler = jest.fn(async (event: Event<any, any>) => {
+            const handler: Handler = jest.fn(async (_: Event<any, any>) => {
                 throw new Error('Handler error');
             });
 
@@ -175,12 +307,82 @@ describe('Processor E2E Tests', () => {
             // ensure handler was called
             expect(handler).toHaveBeenCalledTimes(20);
 
+            expect(customEventConfirmedLog).toHaveBeenCalledTimes(0);
+            expect(customEventRejectedLog).toHaveBeenCalledTimes(20);
+            expect(customEventTimeoutLog).toHaveBeenCalledTimes(0);
+            expect(customEventFailedLog).toHaveBeenCalledTimes(20);
+
+            for (let i = 0; i < 20; i++) {
+                expect(customEventRejectedLog).toHaveBeenCalledWith({
+                    id: expect.any(String),
+                    ack: expect.any(Function),
+                    headers: expect.objectContaining({
+                        id: `${stream}-${i}`,
+                        group: config.group,
+                        timestamp: expect.any(String)
+                    }),
+                    action,
+                    payload: { id: `${stream}-${i}`, },
+                    stream,
+                    attempt: 2
+                }, Error('Handler error'));
+
+                expect(customEventFailedLog).toHaveBeenCalledWith({
+                    id: expect.any(String),
+                    ack: expect.any(Function),
+                    headers: expect.objectContaining({
+                        id: `${stream}-${i}`,
+                        group: config.group,
+                        timestamp: expect.any(String)
+                    }),
+                    action,
+                    payload: { id: `${stream}-${i}`, },
+                    stream,
+                    attempt: 2
+                }, Error('Handler error'));
+            }
+
+            expect(confirmedHookHandler).toHaveBeenCalledTimes(0);
+            expect(rejectedHookHandler).toHaveBeenCalledTimes(20);
+            expect(timeoutHookHandler).toHaveBeenCalledTimes(0);
+            expect(failedHookHandler).toHaveBeenCalledTimes(20);
+
+            for (let i = 0; i < 20; i++) {
+                expect(rejectedHookHandler).toHaveBeenCalledWith({
+                    id: expect.any(String),
+                    ack: expect.any(Function),
+                    headers: expect.objectContaining({
+                        id: `${stream}-${i}`,
+                        group: config.group,
+                        timestamp: expect.any(String)
+                    }),
+                    action,
+                    payload: { id: `${stream}-${i}`, },
+                    stream,
+                    attempt: 2
+                }, Error('Handler error'));
+
+                expect(failedHookHandler).toHaveBeenCalledWith({
+                    id: expect.any(String),
+                    ack: expect.any(Function),
+                    headers: expect.objectContaining({
+                        id: `${stream}-${i}`,
+                        group: config.group,
+                        timestamp: expect.any(String)
+                    }),
+                    action,
+                    payload: { id: `${stream}-${i}`, },
+                    stream,
+                    attempt: 2
+                }, Error('Handler error'));
+            }
+
             // verify pending events
             const pendingEventsInfo = await redisClient.xpending(stream, config.group, '-', '+', 300);
             expect(pendingEventsInfo).toHaveLength(0);
 
             // verify the dead-letter stream should contain these events as the error has been detected
-            const deadLetterEvents = await redisClient.xrange(processor.DEAD_LETTER, '-', '+');
+            const deadLetterEvents = await redisClient.xrange(DEAD_LETTER, '-', '+');
             expect(deadLetterEvents).toHaveLength(20);
         });
     });
@@ -198,7 +400,7 @@ describe('Processor E2E Tests', () => {
 
         for (let i = 0; i < count; i++) {
             const id = `${stream}-${i}`
-            const event: Event<any, any> = { id, action, stream: 'test-channel', payload: { id }, attempt, headers: { id, timestamp: new Date().toISOString(), group }, ack: () => { } };
+            const event: Event<any, any> = { id, action, stream, payload: { id }, attempt, headers: { id, timestamp: new Date().toISOString(), group }, ack: () => { } };
             event.id = await publisher.publish(event.action, event.payload, event.headers)
             events.push(event)
         }

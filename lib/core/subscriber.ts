@@ -1,11 +1,15 @@
+import EventEmitter from 'node:events';
+
+import { setDefaultMinMax } from '../utils';
+import { FAILED_HOOK, CONFIRMED_HOOK, REJECTED_HOOK, TIMEOUT_HOOK } from '../constants';
+import { ChannelsHandlers, Handler, Logger, RedisClient, SubscriberHookType } from "../types";
+import { ErrorHookPayload, ProcessedHookPayload, SubscriberConfig } from '../config/subscriber.config';
+
 import { Trimmer } from './trimmer';
 import { Channel } from '../channel/channel';
-import { SubscriberConfig } from '../config/subscriber.config';
-import { FailedConsumer } from '../consumers/failed.consumer';
-import { LiveConsumer } from '../consumers/live.consumer';
 import { Processor } from '../processor/processor';
-import { ChannelsHandlers, Handler, Logger, RedisClient } from "../types";
-import { setDefaultMinMax } from '../utils';
+import { LiveConsumer } from '../consumers/live.consumer';
+import { FailedConsumer } from '../consumers/failed.consumer';
 
 /**
  * The `Subscriber` class is responsible for subscribing to Redis streams, 
@@ -17,6 +21,13 @@ export class Subscriber {
   private logger: Logger;
   private redis: RedisClient;
   private trimmer: Trimmer | null;
+  private eventEmitter: EventEmitter;
+
+  /**
+  * The processor layer for processing incoming events.
+  * @type {Processor}
+  */
+  private processor: Processor;
 
   /**
   * The consumer for handling live events.
@@ -35,6 +46,10 @@ export class Subscriber {
   * @type {ChannelsHandlers}
   */
   readonly channelsHandlers: ChannelsHandlers;
+
+
+
+  Processor
 
   /**
   * Indicates whether the subscriber is currently enabled.
@@ -105,6 +120,20 @@ export class Subscriber {
     this.processTimeout = setDefaultMinMax(processTimeout, this.defProcessTimeout, this.minProcessTimeout)
     this.fetchBatchSize = setDefaultMinMax(fetchBatchSize, this.defFetchBatchSize, this.minFetchBatchSize);
     this.processConcurrency = setDefaultMinMax(processConcurrency, this.defProcessConcurrency, this.minProcessConcurrency);
+
+    const { customEventConfirmedLog, customEventRejectedLog, customEventTimeoutLog, customEventFailedLog } = config;
+
+    this.eventEmitter = new EventEmitter();
+    this.processor = new Processor({
+      group: this.group,
+      retries: this.retries,
+      processTimeout: this.processTimeout,
+      processConcurrency: this.processConcurrency,
+      customEventConfirmedLog,
+      customEventRejectedLog,
+      customEventTimeoutLog,
+      customEventFailedLog,
+    }, this.redis, this.logger, this.eventEmitter);
 
     if (config.trimmer) {
       this.trimmer = new Trimmer(config.trimmer, this.redis, this.logger)
@@ -228,21 +257,13 @@ export class Subscriber {
   */
   async listen() {
     if (!this.enabled) {
-
-      const processor = new Processor({
-        group: this.group,
-        retries: this.retries,
-        processTimeout: this.processTimeout,
-        processConcurrency: this.processConcurrency,
-      }, this.redis, this.logger);
-
       this.liveConsumer = new LiveConsumer({
         clientId: this.clientId,
         streams: [...this.channelsHandlers.keys()],
         group: this.group,
         blockTime: this.blockTime,
         fetchBatchSize: this.fetchBatchSize,
-      }, this.redis, processor, this.logger)
+      }, this.redis, this.processor, this.logger)
 
       this.failedConsumer = new FailedConsumer({
         clientId: this.clientId,
@@ -250,7 +271,7 @@ export class Subscriber {
         group: this.group,
         ackTimeout: this.ackTimeout,
         fetchBatchSize: this.fetchBatchSize,
-      }, this.redis, processor, this.logger)
+      }, this.redis, this.processor, this.logger)
 
       await this.createGroup();
 
@@ -266,6 +287,19 @@ export class Subscriber {
   }
 
   /**
+  * Register an event listener for the specified event.
+  * @param event - The event to listen for.
+  * @param listener - The callback function to handle the event.
+  */
+  public on<P, H>(event: typeof CONFIRMED_HOOK, listener: (data: ProcessedHookPayload<P, H>) => void): void;
+  public on<P, H>(event: typeof FAILED_HOOK, listener: (data: ErrorHookPayload<P, H>) => void): void;
+  public on<P, H>(event: typeof TIMEOUT_HOOK, listener: (data: ErrorHookPayload<P, H>) => void): void;
+  public on<P, H>(event: typeof REJECTED_HOOK, listener: (data: ErrorHookPayload<P, H>) => void): void;
+  public on(event: SubscriberHookType, listener: (data: any) => void): void {
+    this.eventEmitter.on(event, listener);
+  }
+
+  /**
   * Stops listening for events on all configured channels.
   * 
   * ```typescript
@@ -274,13 +308,16 @@ export class Subscriber {
   * ```
   */
   async stop() {
-    if (this.enabled) {
-      await Promise.all([this.liveConsumer.stop(), this.failedConsumer.stop()])
-      if (this.trimmer) {
-        this.trimmer.stop()
-        this.trimmer = null;
+    return new Promise(async (resolve) => {
+      if (this.enabled) {
+        await Promise.allSettled([this.liveConsumer.stop(), this.failedConsumer.stop()])
+        if (this.trimmer) {
+          this.trimmer.stop()
+          this.trimmer = null;
+        }
+        this.redis.quit(resolve)
+        this.enabled = false
       }
-      this.enabled = false
-    }
+    })
   }
 }
