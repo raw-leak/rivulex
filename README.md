@@ -17,7 +17,6 @@
 
 Rivulex is a high-performance messaging system built on Redis Streams and written in pure JavaScript. Designed to ensure at-least-once delivery guarantees, Rivulex is ideal for distributed systems and applications that require robust, reliable messaging and event handling.
 
-
 ### Key Features:
 - **At-Least-Once Delivery**: Rivulex ensures that every event is delivered at-least-once, making it suitable for scenarios where event loss is unacceptable.
 - **FIFO Messaging**: Leveraging Redis Streams, Rivulex provides a FIFO (First-In-First-Out) order for event processing, ensuring predictable and reliable event handling.
