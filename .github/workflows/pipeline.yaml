@@ -28,29 +28,32 @@ jobs:
       - name: Stop Redis
         run: docker stop my-redis && docker rm my-redis
       
-      - name: Determine next version
-        id: determine-next-version
+      - name: Determine version bump
+        id: version_bump
         run: |
-          current_version=$(node -p "require('./package.json').version")
-          major=$(echo "$current_version" | cut -d'.' -f1)
-          minor=$(echo "$current_version" | cut -d'.' -f2)
-          patch=$(echo "$current_version" | cut -d'.' -f3)
-
-          first_line=$(git log -1 --pretty=%B)
-          if [[ "$first_line" =~ ^minor: ]]; then
-            new_minor=$(expr $minor + 1)
-            new_version="$major.$new_minor.$patch"
-            echo "next_version=$new_version" >> $GITHUB_OUTPUT
-          elif [[ "$first_line" =~ ^major: ]]; then
-            new_major=$(expr $major + 1)
-            new_version="$new_major.0.0"
-            echo "next_version=$new_version" >> $GITHUB_OUTPUT
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+  
+          # Determine if there are any commit messages that indicate a major or minor bump
+          COMMITS=$(git log --format=%B -n 10)
+          if echo "$COMMITS" | grep -q 'major:'; then
+            BUMP="major"
+          elif echo "$COMMITS" | grep -q 'minor:'; then
+            BUMP="minor"
           else
-            new_patch=$(expr $patch + 1)
-            new_version="$major.$minor.$new_patch"
+            BUMP="patch"
           fi
-
-          echo $new_version > package.json
-          git add package.json
-          git commit -m "chore: Bump version to $new_version"
-
+  
+          # Bump the version using npm version
+          NEW_VERSION=$(npm version $BUMP --no-git-tag-version)
+          echo "New version: $NEW_VERSION"
+          echo "::set-output name=new_version::$NEW_VERSION"
+          echo "::set-output name=bump_type::$BUMP"
+  
+      - name: Commit and push version bump
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git commit -am "chore(release): bump version to ${{ steps.version_bump.outputs.new_version }}"
+          git tag ${{ steps.version_bump.outputs.new_version }}
+          git push origin main --tags
