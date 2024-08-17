@@ -2,6 +2,7 @@
 <div align="center">
   <h1>Rivulex [in-progress]</h1>
   
+[![CI](https://github.com/raw-leak/rivulex/actions/workflows/pipeline.yaml/badge.svg)](https://github.com/raw-leak/rivulex/actions/workflows/pipeline.yaml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![Last Tag](https://img.shields.io/github/v/tag/raw-leak/rivulex?label=Last%20Tag)
 ![Version](https://img.shields.io/github/v/release/raw-leak/rivulex)

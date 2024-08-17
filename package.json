@@ -43,6 +43,7 @@
         "clean": "rm -rf dist",
         "build": "npm run clean && tsc",
         "test": "jest --runInBand",
+        "test:ci": "jest --ci --runInBand",
         "test:cov": "jest --runInBand --coverage"
     },
     "dependencies": {

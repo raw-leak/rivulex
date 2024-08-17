@@ -23,7 +23,7 @@ jobs:
         run: docker run -d --name my-redis -p 6379:6379 redis
 
       - name: Run tests
-        run: npm test
+        run: npm run test:ci
 
       - name: Stop Redis
         run: docker stop my-redis && docker rm my-redis
