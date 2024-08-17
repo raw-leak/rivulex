@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write  # Grants write permission to the `GITHUB_TOKEN`
+  contents: write
 
 jobs:
   build-and-test:
@@ -61,13 +61,6 @@ jobs:
           git config user.email "actions@github.com"
           git commit -am "chore(release): 🤖 bump version to ${{ steps.version_bump.outputs.new_version }}"
           git push origin main
-          
-      - name: Debug bump_type
-        run: echo "bump_type is ${{ steps.version_bump.outputs.bump_type }}"
-      
-      - name: Test bump_type
-        if: ${{ steps.version_bump.outputs.bump_type == 'major' || steps.version_bump.outputs.bump_type == 'minor' }}
-        run: echo "TRUE"
 
       - name: Build the project (only for major/minor bumps)
         if: ${{ steps.version_bump.outputs.bump_type == 'major' || steps.version_bump.outputs.bump_type == 'minor' }}
