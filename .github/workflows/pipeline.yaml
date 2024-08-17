@@ -31,10 +31,7 @@ jobs:
 
       - name: Stop Redis
         run: docker stop redis-for-tests && docker rm redis-for-tests
-      
-      - name: Remove Redis container
-        run: docker rm redis-for-tests
-      
+
       - name: Determine version bump
         id: version_bump
         run: |
