@@ -81,8 +81,8 @@ When creating a `Publisher` instance, you need to provide a configuration object
 |--------------------------------|-----------------------------------------------------------------------------------------|--------------|--------------------------------------------|
 | `defaultStream`                | The Redis stream channel to publish events to.                                          | Yes          | -                                          |
 | `group`                        | The consumer group to associate with the events.                                        | Yes          | -                                          |
-| `customPublishSucceededLog`   | Callback to customize log message to invoked when a message is successfully published.  | No           | Uses default callback if not provided.     |
-| `customPublishFailedLog`      | Callback to customize log message invoked when publishing fails.                        | No           | Uses default callback if not provided.     |
+| `customPublishSucceededLog`    | Callback to customize log message to invoked when a message is successfully published.  | No           | Uses default callback if not provided.     |
+| `customPublishFailedLog`       | Callback to customize log message invoked when publishing fails.                        | No           | Uses default callback if not provided.     |
 
 ### Example Configuration Parameters
 
@@ -136,16 +136,20 @@ The `Subscriber` class listens to Redis streams and processes events. It support
 
 When creating a Subscriber instance, you need to provide a configuration object with the following parameters:
 
-| **Parameter**       | **Description** | **Required** | **Default Value** | **Minimum Value** | **Maximum Value** |
-|---------------------|-----------------|--------------|-------------------|-------------------|-------------------|
-| `clientId`          | The unique identifier for the subscriber. If not provided, a default value is generated. | No           | `rivulex:{group}:sub:{Date.now()}` | - | - |
-| `group`             | The group name for the subscriber. Subscribers with the same group name share the workload. | Yes          | -                 | - | - |
-| `ackTimeout`        | The maximum time (in milliseconds) to wait for an event before retrying. | No           | `30_000`ms | `1_000` ms | - |
-| `processTimeout`    | The maximum time (in milliseconds) allowed for the handler to process each event. | No           | `200` ms | `20`ms  | - |
-| `processConcurrency`| The maximum number of events to process concurrently at a time. | No           | `100` | `1`  | - |
-| `fetchBatchSize`    | The maximum number of events fetched in each request from Redis Stream. | No           | `100`                 | `1` | - |
-| `blockTime`         | The time (in milliseconds) that the subscriber blocks while waiting for new events. | No           | `30_000`ms | `1_000`ms| - |
-| `retries`           | The number of times the subscriber will attempt to process an event before sending it to the dead letter queue. | No           | `3`| `1` | - |
+| **Parameter**           |                           **Description**                                                                       | **Required** | **Default Value**                      | **Minimum Value** | **Maximum Value** |
+|-------------------------|-----------------------------------------------------------------------------------------------------------------|--------------|----------------------------------------|-------------------|-------------------|
+| `clientId`              | The unique identifier for the subscriber. If not provided, a default value is generated.                         | No           | `rivulex:{group}:sub:{Date.now()}`     | -                 | -                 |
+| `group`                 | The group name for the subscriber. Subscribers with the same group name share the workload.                     | Yes          | -                                      | -                 | -                 |
+| `ackTimeout`            | The maximum time (in milliseconds) to wait for an event before retrying.                                        | No           | `30_000`ms                             | `1_000`ms         | -                 |
+| `processTimeout`        | The maximum time (in milliseconds) allowed for the handler to process each event.                               | No           | `200`ms                                | `20`ms            | -                 |
+| `processConcurrency`    | The maximum number of events to process concurrently at a time.                                                 | No           | `100`                                  | `1`               | -                 |
+| `fetchBatchSize`        | The maximum number of events fetched in each request from Redis Stream.                                         | No           | `100`                                  | `1`               | -                 |
+| `blockTime`             | The time (in milliseconds) that the subscriber blocks while waiting for new events.                             | No           | `30_000`ms                             | `1_000`ms         | -                 |
+| `retries`               | The number of times the subscriber will attempt to process an event before sending it to the dead letter queue. | No           | `3`                                    | `1`               | -                 |
+| `customEventConfirmedLog`| Callback to customize log message invoked when event is confirmed.                                               | No           | Uses default callback if not provided. | -                 | -                 |
+| `customEventRejectedLog`| Callback to customize log message invoked when event is rejected.                                               | No           | Uses default callback if not provided. | -                 | -                 |
+| `customEventTimeoutLog` | Callback to customize log message invoked when event is timeout.                                                | No           | Uses default callback if not provided. | -                 | -                 |
+| `customEventFailedLog`  | Callback to customize log message invoked when event has failed.                                                | No           | Uses default callback if not provided. | -                 | -                 |
 
 ### Example Configuration Parameters
 
@@ -156,7 +160,11 @@ const subscriberConfig: SubscriberConfig = {
     ackTimeout: 5000, // 5 seconds
     fetchBatchSize: 100,
     blockTime: 15000, // 15 seconds
-    retries: 5
+    retries: 5,
+    customEventConfirmedLog: (id: string, data: NewEvent) => `Event has been confirmed: ${data.id}`,
+    customEventRejectedLog: (data: NewEvent, error: Error) => `Event has been sent to the dead-letter stream: ${data.id} ${data.error}`
+    customEventTimeoutLog: (data: NewEvent, error: Error) => `Event has timedout: ${data.id} ${data.error}`
+    customEventFailedLog: (data: NewEvent, error: Error) => `Event has failed: ${data.id} ${data.error}`
 };
 ```
 
@@ -178,26 +186,26 @@ const userChannel = subscriber.stream('users')
 
 // register handlers for multiple actions
 userChannel
-    .action('user_created', (event:Event<UserCreatedPayload, CustomHeaders>, done: Done) => {
+    .action('user_created', (event:Event<UserCreatedPayload, CustomHeaders>) => {
         // process
-        await done();
+        await event.ack();
     })
-    .action('user_deleted', (event:Event<UserDeletedPayload, CustomHeaders>, done: Done) => {
+    .action('user_deleted', (event:Event<UserDeletedPayload, CustomHeaders>) => {
         // process
-        await done();
+        await event.ack();
     });
 
 // you can also register directly handlers for stream and action
-subscriber.streamAction('users','user_suspended', (event:Event<UserSuspendedPayload, CustomHeaders>, done: Done) => {
+subscriber.streamAction('users','user_suspended', (event:Event<UserSuspendedPayload, CustomHeaders>) => {
     // process
-    await done();
+    await event.ack();
 })
 
 // register another channel subscribed to a specific Redis Stream
 subscriber.stream('another-channel')
-    .action('another_action', (event:Event<AnotherPayload, CustomHeaders>, done: Done) => {
+    .action('another_action', (event:Event<AnotherPayload, CustomHeaders>) => {
         // process
-        await done();
+        await event.ack();
     });
 
 // start listening for events
@@ -364,23 +372,37 @@ In this example, the `Trimmer` is configured as part of the `Subscriber` configu
 
 ## Hooks
 
-The Publisher emits internal events that can be handled using hooks. These hooks allow you to execute custom logic when specific internal events occur, such as when an event is successfully published or when an event publishing attempt fails.
+The Publisher adn Subscriber emit internal events that can be handled using hooks. These hooks allow you to execute custom logic when specific internal events occur, such as when an event is successfully published or when an event publishing attempt fails.
 
 <details>
 <summary>Read more on Hooks</summary>
 
-### Supported Hooks
+### Publisher Hooks
 
-- `published`: Triggered when an event is successfully published. The hook receives an object containing the event ID and event data.
-- `failed`: Triggered when an event publishing attempt fails. The hook receives an object containing the event data and the error.
+- `published`: Triggered when an event is successfully published. 
+- `failed`: Triggered when an event publishing attempt fails.
 
-### Hook Data Types
+#### Publisher Hook Data Types
 - `PublishedHookPayload<P, H>`: The data received by the hook for the `published` hook.
     - `id: string`: The unique identifier of the successfully published event.
     - `event: NewEvent<P, H>`: The event details including stream, group, action, payload, and headers.
 - `FailedHookPayload<P, H>`: The data received by the hook for the `failed` hook.
     - `event: NewEvent<P, H>`: The event details that were attempted to be published, including stream, group, action, payload, and headers.
     - `error: Error`: The error that caused the publishing attempt to fail.
+
+### Subscriber Hooks
+
+- `confirmed`: Triggered when an event is successfully confirmed.
+- `failed`: Triggered when an event fails during the processing.
+- `rejected`: Triggered when an event is sent to the dead-letter queue due to <> of allowed attempts.
+- `timeout`: Triggered when an event takes more to process that the established time.
+
+#### Subscriber Hook Data Types
+- `ConfirmedHookPayload<P, H>`: The data received by the hook for the `published` hook.
+    - `event: Event<P, H>`: The event details including id, stream, group, action, payload, and headers.
+- `ErrorHookPayload<P, H>`: The data received by the hook for the `failed`, `rejected`, and `timeout` hooks.
+    - `event: Event<P, H>`: The event details including id, stream, group, action, payload, and headers.
+    - `error?: Error`: The error that caused the publishing attempt to fail.
 
 ### Example
 ```js
