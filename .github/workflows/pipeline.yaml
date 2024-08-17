@@ -27,3 +27,30 @@ jobs:
 
       - name: Stop Redis
         run: docker stop my-redis && docker rm my-redis
+      
+      - name: Determine next version
+        id: determine-next-version
+        run: |
+          current_version=$(node -p "require('./package.json').version")
+          major=$(echo "$current_version" | cut -d'.' -f1)
+          minor=$(echo "$current_version" | cut -d'.' -f2)
+          patch=$(echo "$current_version" | cut -d'.' -f3)
+
+          first_line=$(git log -1 --pretty=%B)
+          if [[ "$first_line" =~ ^minor: ]]; then
+            new_minor=$(expr $minor + 1)
+            new_version="$major.$new_minor.$patch"
+            echo "next_version=$new_version" >> $GITHUB_OUTPUT
+          elif [[ "$first_line" =~ ^major: ]]; then
+            new_major=$(expr $major + 1)
+            new_version="$new_major.0.0"
+            echo "next_version=$new_version" >> $GITHUB_OUTPUT
+          else
+            new_patch=$(expr $patch + 1)
+            new_version="$major.$minor.$new_patch"
+          fi
+
+          echo $new_version > package.json
+          git add package.json
+          git commit -m "chore: Bump version to $new_version"
+
