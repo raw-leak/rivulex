@@ -38,10 +38,10 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
       
           # Determine if there are any commit messages that indicate a major or minor bump
-          COMMITS=$(git log --format=%B -n 10)
-          if echo "$COMMITS" | grep -q 'BREAKING CHANGE:'; then
+          first_line=$(git log -1 --pretty=%B)
+          if [[ "$first_line" =~ ^minor: ]]; then
             BUMP="major"
-          elif echo "$COMMITS" | grep -q 'feat:'; then
+          elif [[ "$first_line" =~ ^major: ]]; then
             BUMP="minor"
           else
             BUMP="patch"
@@ -52,6 +52,7 @@ jobs:
           echo "New version: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "bump_type=$BUMP" >> $GITHUB_OUTPUT
+          echo "Determined bump type: $BUMP"
       
       - name: Commit and push version bump
         run: |
