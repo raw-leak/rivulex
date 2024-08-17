@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start Redis
+        run: docker run -d --name my-redis redis
+
+      - name: Run tests
+        run: npm test
+
+      - name: Stop Redis
+        run: docker stop my-redis && docker rm my-redis
