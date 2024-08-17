@@ -66,15 +66,15 @@ jobs:
         run: echo "bump_type is ${{ steps.version_bump.outputs.bump_type }}"
       
       - name: Test bump_type
-        if: ${{ steps.version_bump.outputs.bump_type }} != 'patch'
+        if: ${{ steps.version_bump.outputs.bump_type == 'major' || steps.version_bump.outputs.bump_type == 'minor' }}
         run: echo "TRUE"
 
       - name: Build the project (only for major/minor bumps)
-        if: ${{ steps.version_bump.outputs.bump_type }} != 'patch'
+        if: ${{ steps.version_bump.outputs.bump_type == 'major' || steps.version_bump.outputs.bump_type == 'minor' }}
         run: npm run build
 
       - name: Publish to npm (only for major/minor bumps)
-        if: ${{ steps.version_bump.outputs.bump_type }} != 'patch'
+        if: ${{ steps.version_bump.outputs.bump_type == 'major' || steps.version_bump.outputs.bump_type == 'minor' }}
         run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
