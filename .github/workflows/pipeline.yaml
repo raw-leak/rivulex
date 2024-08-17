@@ -64,6 +64,10 @@ jobs:
           
       - name: Debug bump_type
         run: echo "bump_type is ${{ steps.version_bump.outputs.bump_type }}"
+      
+      - name: Test bump_type
+        if: ${{ steps.version_bump.outputs.bump_type }} != 'patch'
+        run: echo "TRUE"
 
       - name: Build the project (only for major/minor bumps)
         if: ${{ steps.version_bump.outputs.bump_type }} != 'patch'
