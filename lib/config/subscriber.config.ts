@@ -12,11 +12,11 @@ export type CustomLog<P, H> = (
 ) => string;
 
 /**
-* Callback type for handling the payload of  published event.
+* Callback type for handling the payload of confirmed hook.
 * @template P - The type of the payload.
 * @template H - The type of the headers.
 */
-export type ProcessedHookPayload<P, H> = (
+export type ConfirmedHookPayload<P, H> = (
     event: Event<P, H>,
 ) => void;
 

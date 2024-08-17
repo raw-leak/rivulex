@@ -3,7 +3,7 @@ import EventEmitter from 'node:events';
 import { setDefaultMinMax } from '../utils';
 import { FAILED_HOOK, CONFIRMED_HOOK, REJECTED_HOOK, TIMEOUT_HOOK } from '../constants';
 import { ChannelsHandlers, Handler, Logger, RedisClient, SubscriberHookType } from "../types";
-import { ErrorHookPayload, ProcessedHookPayload, SubscriberConfig } from '../config/subscriber.config';
+import { ErrorHookPayload, ConfirmedHookPayload, SubscriberConfig } from '../config/subscriber.config';
 
 import { Trimmer } from './trimmer';
 import { Channel } from '../channel/channel';
@@ -291,7 +291,7 @@ export class Subscriber {
   * @param event - The event to listen for.
   * @param listener - The callback function to handle the event.
   */
-  public on<P, H>(event: typeof CONFIRMED_HOOK, listener: (data: ProcessedHookPayload<P, H>) => void): void;
+  public on<P, H>(event: typeof CONFIRMED_HOOK, listener: (data: ConfirmedHookPayload<P, H>) => void): void;
   public on<P, H>(event: typeof FAILED_HOOK, listener: (data: ErrorHookPayload<P, H>) => void): void;
   public on<P, H>(event: typeof TIMEOUT_HOOK, listener: (data: ErrorHookPayload<P, H>) => void): void;
   public on<P, H>(event: typeof REJECTED_HOOK, listener: (data: ErrorHookPayload<P, H>) => void): void;
