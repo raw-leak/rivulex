@@ -1,6 +1,6 @@
 {
     "name": "rivulex",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "Rivulex is a high-performance messaging library leveraging Redis Streams for reliable event-driven communication within distributed systems.",
     "repository": {
         "type": "git",
