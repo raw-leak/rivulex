@@ -1,6 +1,6 @@
 
 <div align="center">
-  <h1>Rivulex</h1>
+  <h1>Rivulex (released 🎉)</h1>
   
 [![CI](https://github.com/raw-leak/rivulex/actions/workflows/pipeline.yaml/badge.svg)](https://github.com/raw-leak/rivulex/actions/workflows/pipeline.yaml)
 [![npm version](https://img.shields.io/npm/v/rivulex.svg?label=npm)](https://www.npmjs.com/package/rivulex)
