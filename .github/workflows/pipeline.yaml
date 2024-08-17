@@ -20,7 +20,7 @@ jobs:
         run: npm install
 
       - name: Start Redis
-        run: docker run -d --name my-redis redis
+        run: docker run -d --name my-redis -p 6379:6379 redis
 
       - name: Run tests
         run: npm test
