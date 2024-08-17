@@ -41,9 +41,9 @@ jobs:
           # Determine if there are any commit messages that indicate a major or minor bump
           first_line=$(git log -1 --pretty=%B)
           if [[ "$first_line" =~ ^minor: ]]; then
-            BUMP="major"
-          elif [[ "$first_line" =~ ^major: ]]; then
             BUMP="minor"
+          elif [[ "$first_line" =~ ^major: ]]; then
+            BUMP="major"
           else
             BUMP="patch"
           fi
