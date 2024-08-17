@@ -1,17 +1,17 @@
 
 <div align="center">
-  <h1>Rivulex [in-progress]</h1>
+  <h1>Rivulex</h1>
   
 [![CI](https://github.com/raw-leak/rivulex/actions/workflows/pipeline.yaml/badge.svg)](https://github.com/raw-leak/rivulex/actions/workflows/pipeline.yaml)
+[![npm version](https://img.shields.io/npm/v/rivulex.svg?label=npm)](https://www.npmjs.com/package/rivulex)
+![repo version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Fraw-leak%2Frivulex%2Fmain%2Fpackage.json&query=%24.version&label=repository)
+![release](https://img.shields.io/github/v/release/raw-leak/rivulex)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![Last Tag](https://img.shields.io/github/v/tag/raw-leak/rivulex?label=Last%20Tag)
-![Version](https://img.shields.io/github/v/release/raw-leak/rivulex)
 ![Contributors](https://img.shields.io/github/contributors/raw-leak/rivulex)
 ![Size](https://img.shields.io/github/repo-size/raw-leak/rivulex)
 ![GitHub last commit](https://img.shields.io/github/last-commit/raw-leak/rivulex)
 ![Maintenance](https://img.shields.io/maintenance/yes/2024)
-[![npm](https://img.shields.io/npm/v/rivulex.svg)](https://www.npmjs.com/package/rivulex)
-![Coverage](https://img.shields.io/codecov/c/github/raw-leak/rivulex)
+![Last Tag](https://img.shields.io/github/v/tag/raw-leak/rivulex?label=Last%20Tag)
 
 </div>
 
