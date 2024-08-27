@@ -45,10 +45,10 @@ jobs:
             BUMP="major"
           elif [[ "$first_line" =~ ^feat:|^hotfix: ]]; then
             BUMP="minor"
-          elif [[ "$first_line" =~ ^hotfix:|^fix:|^docs:|^ref:|^perf:|^chore: ]]; then
+          elif [[ "$first_line" =~ ^fix:|^ref:|^perf:|^test: ]]; then
             BUMP="patch"
           else
-            BUMP="patch"
+            BUMP="none"
           fi
 
           # Bump the version using npm version
@@ -60,11 +60,12 @@ jobs:
           echo "Determined bump type: $BUMP"
       
       - name: Commit and push version bump
+        if: steps.version_bump.outputs.bump_type != 'none'
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          NEW_VERSION=v1.0.0
-          BUMP_TYPE=patch
+          NEW_VERSION=${{ steps.version_bump.outputs.new_version }}
+          BUMP_TYPE=${{ steps.version_bump.outputs.bump_type }}
           
           # Determine the commit message based on whether it's a breaking change or not
           if [[ "$first_line" =~ ^BREAKING\ CHANGE: ]]; then
