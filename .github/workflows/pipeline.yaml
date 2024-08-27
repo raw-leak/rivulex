@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 jobs:
-  build-and-test:
+  test-build-publish:
     runs-on: ubuntu-latest
 
     steps:
@@ -40,18 +40,22 @@ jobs:
       
           # Determine if there are any commit messages that indicate a major or minor bump
           first_line=$(git log -1 --pretty=%B)
-          if [[ "$first_line" =~ ^minor: ]]; then
-            BUMP="minor"
-          elif [[ "$first_line" =~ ^major: ]]; then
+
+          if [[ "$first_line" =~ ^BREAKING\ CHANGE: ]]; then
             BUMP="major"
+          elif [[ "$first_line" =~ ^feat:|^hotfix: ]]; then
+            BUMP="minor"
+          elif [[ "$first_line" =~ ^hotfix:|^fix:|^docs:|^ref:|^perf:|^chore: ]]; then
+            BUMP="patch"
           else
             BUMP="patch"
           fi
-      
+
           # Bump the version using npm version
           NEW_VERSION=$(npm version $BUMP --no-git-tag-version)
           echo "New version: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
           echo "bump_type=$BUMP" >> $GITHUB_OUTPUT
           echo "Determined bump type: $BUMP"
       
@@ -59,15 +63,22 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git commit -am "chore(release): 🤖 bump version to ${{ steps.version_bump.outputs.new_version }}"
+          NEW_VERSION=v1.0.0
+          BUMP_TYPE=patch
+          
+          # Determine the commit message based on whether it's a breaking change or not
+          if [[ "$first_line" =~ ^BREAKING\ CHANGE: ]]; then
+            COMMIT_MESSAGE="BREAKING CHANGE: Bump version to $NEW_VERSION"
+          else
+            COMMIT_MESSAGE="chore($BUMP_TYPE): Bump version to $NEW_VERSION"
+          fi
+          
+          # Commit the changes
+          git commit -am "$COMMIT_MESSAGE"
           git push origin main
 
-      - name: Build the project (only for major/minor bumps)
-        if: ${{ steps.version_bump.outputs.bump_type == 'major' || steps.version_bump.outputs.bump_type == 'minor' }}
-        run: npm run build
-
       - name: Publish to npm (only for major/minor bumps)
-        if: ${{ steps.version_bump.outputs.bump_type == 'major' || steps.version_bump.outputs.bump_type == 'minor' }}
-        run: npm publish
+        if: steps.version_bump.outputs.bump_type == 'minor' || steps.version_bump.outputs.bump_type == 'major'
+        run: npm run build && npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
