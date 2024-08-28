@@ -427,7 +427,7 @@ publisher.on('failed', (event, error) => {
 </details>
 
 ## Acknowledgment and Timeouts
-In `nestjs-rivulex`, acknowledging processed events is a critical step to ensure the reliability and efficiency of your event-driven system. When an event is received and processed by a handler, you must acknowledge the event to indicate its successful processing. Failing to acknowledge an event will result in the event being considered as unprocessed, and it may be picked up by other consumers for reprocessing.
+In Rivulex, acknowledging processed events is a critical step to ensure the reliability and efficiency of your event-driven system. When an event is received and processed by a handler, you must acknowledge the event to indicate its successful processing. Failing to acknowledge an event will result in the event being considered as unprocessed, and it may be picked up by other consumers for reprocessing.
 
 <details>
 <summary>Read more on Acknowledgment and Timeouts</summary>
@@ -442,14 +442,14 @@ async handleUserCreated(@EventAck() ack: () => void) {
     // ...
 
     // Acknowledge the event
-    await ack();
+    await ack(); // or await event.ack()
 }
 ```
 
 ### Handling Timeouts
 Each transport layer has a specified `timeout` period within which it must process the event. Immediately after an event is received by a consumer, it remains in the stream. To prevent other consumers from processing the event again, Rivulex sets a timeout, a period of time during which it prevents all consumers from receiving and processing the event. The default visibility timeout for an event is 30 seconds. The minimum is 1 second.
 
-![My Diagram](images/event-life-cycle.png)
+![Diagram](images/event-life-cycle.png)
 
 ### Best Practices for Setting Timeouts
 To avoid processing the same event multiple times and to ensure efficient event handling, it's essential to set appropriate timeout periods. Here are some best practices for setting timeouts:
