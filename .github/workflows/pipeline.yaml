@@ -76,8 +76,8 @@ jobs:
           git commit -am "$COMMIT_MESSAGE"
           git push origin main
 
-      - name: Publish to npm (only for major/minor bumps)
-        if: steps.version_bump.outputs.bump_type == 'minor' || steps.version_bump.outputs.bump_type == 'major'
+      - name: Publish to npm (only for major/minor/patch bumps)
+        if: steps.version_bump.outputs.bump_type == 'major' || steps.version_bump.outputs.bump_type == 'minor'|| steps.version_bump.outputs.bump_type == 'patch'
         run: npm run build && npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
