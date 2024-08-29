@@ -15,7 +15,7 @@
 
 </div>
 
-Rivulex is a high-performance messaging system built on Redis Streams and written in pure JavaScript. Designed to ensure at-least-once delivery guarantees, Rivulex is ideal for distributed systems and applications that require robust, reliable messaging and event handling.
+Rivulex is a lightweight, efficient library that provides an easy-to-use abstraction over Redis Streams, simplifying message brokering with at-least-once delivery guarantees. Built for seamless integration into Node.js environments, it ensures reliable, high-performance message distribution with minimal overhead.
 
 ### Key Features:
 - **At-Least-Once Delivery**: Rivulex ensures that every event is delivered at-least-once, making it suitable for scenarios where event loss is unacceptable.
@@ -106,20 +106,23 @@ const config = {
 
 const publisher = Rivulex.publisher(config);
 
-// Example: Publishing an event to a default stream
-publisher.publish('user_created', { id: "123", email: "user@email.com" }, { requestId: '123' });
+// example: publishing a single event to a default stream
+const eventId = await publisher.publish('user_created', { id: '123', email: 'user@email.com' }, { requestId: '123' });
 
+// example: publishing a single event to a specific stream
+const eventId = await publisher.publish('specific_stream', 'user_created', { id: '123', email: 'user@email.com' }, { requestId: '123' });
 
-    const res = await publisher.publishBatch([
-        // sending to a default stream
-        { stream: "specific_stream", action: "user_created", payload: { id: "1", email: "user1@email.com" }, headers: { traceId: "111" } },
+// example: publishing multiple events
+const res = await publisher.publishBatch([
+    // sending to a specific stream
+    { stream: 'specific_stream', action: 'user_created', payload: { id: '1', email: 'user1@email.com' }, headers: { traceId: '111' } },
 
-        // sending to a default stream
-        { action: "user_created", payload: { id: "2", email: "user2@email.com" }, headers: { traceId: "222" } },
+    // sending to a default stream
+    { action: 'user_created', payload: { id: '2', email: 'user2@email.com' }, headers: { traceId: '222' } },
 
-        // sending to a default stream
-        { action: "user_created", payload: { id: "3", email: "user3@email.com" }, headers: { traceId: "333" } },
-    ])
+    // sending to a default stream
+    { action: 'user_created', payload: { id: '3', email: 'user3@email.com' }, headers: { traceId: '333' } },
+])
 ```
 
 </details>
@@ -185,24 +188,24 @@ const userChannel = subscriber.stream('users')
 
 // register handlers for multiple actions
 userChannel
-    .action('user_created', (event:Event<UserCreatedPayload, CustomHeaders>) => {
+    .action('user_created', (event: Event<UserCreatedPayload, CustomHeaders>) => {
         // process
         await event.ack();
     })
-    .action('user_deleted', (event:Event<UserDeletedPayload, CustomHeaders>) => {
+    .action('user_deleted', (event: Event<UserDeletedPayload, CustomHeaders>) => {
         // process
         await event.ack();
     });
 
 // you can also register directly handlers for stream and action
-subscriber.streamAction('users','user_suspended', (event:Event<UserSuspendedPayload, CustomHeaders>) => {
+subscriber.streamAction('users','user_suspended', (event: Event<UserSuspendedPayload, CustomHeaders>) => {
     // process
     await event.ack();
 })
 
 // register another channel subscribed to a specific Redis Stream
 subscriber.stream('another-channel')
-    .action('another_action', (event:Event<AnotherPayload, CustomHeaders>) => {
+    .action('another_action', (event: Event<AnotherPayload, CustomHeaders>) => {
         // process
         await event.ack();
     });
@@ -283,7 +286,7 @@ const trimmerConfig: TrimmerConfig = {
 ### Usage
 
 ```typescript
-import { Logger } from '@nestjs/common';
+import { CustomLogger } from '<custom-logger>';
 import { Rivulex } from 'rivulex';
 
 const config = {
@@ -294,9 +297,9 @@ const config = {
     retentionPeriod: 604800000, // 7 days
 };
 
-const logger = new Logger('Trimmer');
+const customLogger = new CustomLogger('Trimmer');
 
-const trimmer = new Rivulex.trimmer(config, , logger);
+const trimmer = Rivulex.trimmer(config, customLogger);
 
 // Start the trimming process
 await trimmer.start();
