@@ -65,6 +65,11 @@ To install Rivulex, use npm:
 npm install rivulex
 ```
 
+Or with Yarn:
+```bash
+yarn add rivulex
+```
+
 ## Publisher
 
 The `Publisher` class is responsible for sending events to Redis streams. It supports configuration for success and error callbacks, making it flexible for various use cases.
@@ -165,7 +170,7 @@ const subscriberConfig: SubscriberConfig = {
     retries: 5,
     customEventConfirmedLog: (id: string, data: NewEvent) => `Event has been confirmed: ${data.id}`,
     customEventRejectedLog: (data: NewEvent, error: Error) => `Event has been sent to the dead-letter stream: ${data.id} ${data.error}`
-    customEventTimeoutLog: (data: NewEvent, error: Error) => `Event has timedout: ${data.id} ${data.error}`
+    customEventTimeoutLog: (data: NewEvent, error: Error) => `Event has timed out: ${data.id} ${data.error}`
     customEventFailedLog: (data: NewEvent, error: Error) => `Event has failed: ${data.id} ${data.error}`
 };
 ```
